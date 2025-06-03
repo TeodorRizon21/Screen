@@ -2,33 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
-const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
-  include: {
-    items: {
-      include: {
-        product: true
-      }
-    },
-    details: true,
-    discountCodes: {
-      include: {
-        discountCode: true
-      }
-    }
-  }
-})
-
-type OrderWithRelations = Prisma.OrderGetPayload<typeof orderWithRelations>
-
-type OrderItemWithProduct = Prisma.OrderItemGetPayload<{
-  include: { product: true }
-}>
-
-type OrderDiscountCodeWithDetails = Prisma.OrderDiscountCodeGetPayload<{
-  include: { discountCode: true }
-}>
-
-type CompleteOrder = Prisma.OrderGetPayload<{
+type OrderWithRelations = Prisma.OrderGetPayload<{
   include: {
     items: {
       include: {
@@ -43,6 +17,16 @@ type CompleteOrder = Prisma.OrderGetPayload<{
     }
   }
 }>
+
+type OrderItemWithProduct = Prisma.OrderItemGetPayload<{
+  include: { product: true }
+}>
+
+type OrderDiscountCodeWithDetails = Prisma.OrderDiscountCodeGetPayload<{
+  include: { discountCode: true }
+}>
+
+type CompleteOrder = OrderWithRelations
 
 export async function GET() {
   try {
