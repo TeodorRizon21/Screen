@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function PUT(
   request: Request,
@@ -19,14 +20,14 @@ export async function PUT(
     } = body
 
     // Use a transaction to ensure all operations succeed or fail together
-    const updatedProduct = await prisma.$transaction(async (prisma) => {
+    const updatedProduct = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // First, delete all existing size variants for this product
-      await prisma.sizeVariant.deleteMany({
+      await tx.sizeVariant.deleteMany({
         where: { productId }
       });
 
       // Then update the product and create new size variants
-      return await prisma.product.update({
+      return await tx.product.update({
         where: { id: productId },
         data: {
           name,

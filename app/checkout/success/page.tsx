@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import SuccessContent from "@/components/SuccessContent";
 import { sendAdminNotification, sendOrderConfirmation } from "@/lib/email";
+import { Prisma } from '@prisma/client';
 
 export default async function CheckoutSuccessPage({
   searchParams,
@@ -57,9 +58,9 @@ export default async function CheckoutSuccessPage({
       const parsedDiscounts = JSON.parse(appliedDiscounts || "[]");
 
       // Use a transaction to create order and update stock
-      order = await prisma.$transaction(async (prisma) => {
+      order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Create the order first
-        const newOrder = await prisma.order.create({
+        const newOrder = await tx.order.create({
           data: {
             userId,
             total: session.amount_total! / 100,
@@ -95,7 +96,7 @@ export default async function CheckoutSuccessPage({
 
         // Update stock for each item
         for (const item of parsedItems) {
-          await prisma.sizeVariant.updateMany({
+          await tx.sizeVariant.updateMany({
             where: {
               productId: item.productId,
               size: item.size,
@@ -123,8 +124,8 @@ export default async function CheckoutSuccessPage({
       }
     } else if (orderId) {
       // For cash on delivery orders
-      order = await prisma.$transaction(async (prisma) => {
-        const existingOrder = await prisma.order.findUnique({
+      order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        const existingOrder = await tx.order.findUnique({
           where: { id: orderId },
           include: {
             items: {
@@ -143,7 +144,7 @@ export default async function CheckoutSuccessPage({
         // Update stock for each item only if it hasn't been updated before
         if (existingOrder.orderStatus !== "Stock Updated") {
           for (const item of existingOrder.items) {
-            await prisma.sizeVariant.updateMany({
+            await tx.sizeVariant.updateMany({
               where: {
                 productId: item.productId,
                 size: item.size,
@@ -157,7 +158,7 @@ export default async function CheckoutSuccessPage({
           }
 
           // Update order status to indicate stock has been updated
-          await prisma.order.update({
+          await tx.order.update({
             where: { id: orderId },
             data: { orderStatus: "Stock Updated" },
           });
