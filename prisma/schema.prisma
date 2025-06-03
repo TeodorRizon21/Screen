@@ -1,0 +1,190 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Product {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  description       String
+  price             Float
+  oldPrice          Float?
+  images            String[]
+  sizes             String[]
+  collections       String[]
+  stock             Int
+  allowOutOfStock   Boolean
+  lowStockThreshold Int?
+  showStockLevel    Boolean
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  OrderItem         OrderItem[]
+  sizeVariants      SizeVariant[]
+  make              String?
+  model             String?
+  generation        String?
+  compatibleCars    Json?
+}
+
+model Order {
+  id                String              @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String?
+  total             Float
+  paymentStatus     String
+  orderStatus       String
+  paymentType       String
+  courier           String?
+  awb               String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  items             OrderItem[]
+  details           OrderDetails        @relation(fields: [detailsId], references: [id])
+  detailsId         String              @db.ObjectId
+  discountCodes     OrderDiscountCode[]
+  checkoutSessionId String?
+}
+
+model OrderItem {
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  orderId   String  @db.ObjectId
+  productId String  @db.ObjectId
+  quantity  Int
+  size      String
+  price     Float
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model OrderDetails {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String?
+  fullName      String
+  email         String
+  phoneNumber   String
+  street        String
+  city          String
+  county        String
+  postalCode    String
+  country       String
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  Order         Order[]
+  isCompany     Boolean  @default(false)
+  companyName   String?
+  cui           String?
+  regCom        String?
+  companyStreet String?
+  companyCity   String?
+  companyCounty String?
+}
+
+model DiscountCode {
+  id             String              @id @default(auto()) @map("_id") @db.ObjectId
+  code           String              @unique
+  type           String
+  value          Float
+  usesLeft       Int?
+  totalUses      Int                 @default(0)
+  expirationDate DateTime?
+  canCumulate    Boolean
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  orders         OrderDiscountCode[]
+}
+
+model OrderDiscountCode {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  orderId        String       @db.ObjectId
+  discountCodeId String       @db.ObjectId
+  order          Order        @relation(fields: [orderId], references: [id])
+  discountCode   DiscountCode @relation(fields: [discountCodeId], references: [id])
+}
+
+model HeroSettings {
+  id       String @id @default("1") @map("_id")
+  slides   Json[]
+  interval Int    @default(5000)
+}
+
+model SizeVariant {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  productId         String  @db.ObjectId
+  size              String
+  price             Float
+  oldPrice          Float?
+  stock             Int
+  lowStockThreshold Int?
+  product           Product @relation(fields: [productId], references: [id])
+}
+
+model AdminNotificationEmail {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Settings {
+  id    String @id @map("_id")
+  value String
+}
+
+model CarMake {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  name      String     @unique
+  models    CarModel[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CarModel {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  make        CarMake         @relation(fields: [makeId], references: [id])
+  makeId      String          @db.ObjectId
+  generations CarGeneration[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([name, makeId])
+}
+
+model CarGeneration {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  model     CarModel @relation(fields: [modelId], references: [id])
+  modelId   String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, modelId])
+}
+
+model UserCar {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String
+  name       String?
+  make       String
+  model      String
+  generation String
+  type       String // "primary" sau "secondary"
+  addedAt    DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, make, model, generation])
+}
+
+model newsletterSubscriber {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  email           String    @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  isActive        Boolean   @default(true)
+  unsubscribeToken String?
+  tokenExpiresAt   DateTime?
+}

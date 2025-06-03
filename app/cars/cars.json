@@ -1,0 +1,266 @@
+[
+  {
+    "make": "BMW",
+    "models": [
+      {
+        "model": "3 Series",
+        "generations": ["G20", "F30", "E90"]
+      },
+      {
+        "model": "5 Series",
+        "generations": ["G30", "F10", "G60"]
+      },
+      {
+        "model": "7 Series",
+        "generations": ["G70", "G11", "F01"]
+      },
+      {
+        "model": "X3",
+        "generations": ["G01", "F25"]
+      },
+      {
+        "model": "X5",
+        "generations": ["G05", "F15", "E70"]
+      },
+      {
+        "model": "X7",
+        "generations": ["G07"]
+      },
+      {
+        "model": "M3",
+        "generations": ["G80", "F80"]
+      },
+      {
+        "model": "M5",
+        "generations": ["F90", "F10"]
+      },
+      {
+        "model": "M4",
+        "generations": ["G82", "F82"]
+      },
+      {
+        "model": "M8",
+        "generations": ["F91", "F92", "F93"]
+      },
+      {
+        "model": "X4",
+        "generations": ["G02", "F26"]
+      },
+      {
+        "model": "X6",
+        "generations": ["G06", "F16"]
+      },
+      {
+        "model": "4 Series",
+        "generations": ["G22", "F32", "F33", "F36"]
+      },
+      {
+        "model": "8 Series",
+        "generations": ["G15", "G16"]
+      },
+      {
+        "model": "i4",
+        "generations": ["G26"]
+      },
+      {
+        "model": "i7",
+        "generations": ["G70"]
+      },
+      {
+        "model": "iX",
+        "generations": ["I20"]
+      },
+      {
+        "model": "iX3",
+        "generations": ["G08"]
+      }
+    ]
+  },
+  {
+    "make": "Audi",
+    "models": [
+      {
+        "model": "A4",
+        "generations": ["B9", "B8"]
+      },
+      {
+        "model": "A6",
+        "generations": ["C8", "C7"]
+      },
+      {
+        "model": "A8",
+        "generations": ["D5", "D4"]
+      },
+      {
+        "model": "Q5",
+        "generations": ["FY", "8R"]
+      },
+      {
+        "model": "Q7",
+        "generations": ["4M", "4L"]
+      },
+      {
+        "model": "Q8",
+        "generations": ["4M"]
+      },
+      {
+        "model": "RS6",
+        "generations": ["C8", "C7"]
+      },
+      {
+        "model": "RS7",
+        "generations": ["C8", "C7"]
+      },
+      {
+        "model": "e-tron",
+        "generations": ["GE"]
+      },
+      {
+        "model": "e-tron GT",
+        "generations": ["J1"]
+      }
+    ]
+  },
+  {
+    "make": "Mercedes-Benz",
+    "models": [
+      {
+        "model": "C-Class",
+        "generations": ["W205", "W206"]
+      },
+      {
+        "model": "E-Class",
+        "generations": ["W213", "W212"]
+      },
+      {
+        "model": "S-Class",
+        "generations": ["W223", "W222"]
+      },
+      {
+        "model": "GLC",
+        "generations": ["X253", "X254"]
+      },
+      {
+        "model": "GLE",
+        "generations": ["W167", "W166"]
+      },
+      {
+        "model": "GLS",
+        "generations": ["X167", "X166"]
+      },
+      {
+        "model": "AMG GT",
+        "generations": ["C190", "R190"]
+      },
+      {
+        "model": "CLA",
+        "generations": ["C118", "C117"]
+      },
+      {
+        "model": "EQS",
+        "generations": ["V297"]
+      },
+      {
+        "model": "EQE",
+        "generations": ["V295"]
+      }
+    ]
+  },
+  {
+    "make": "Porsche",
+    "models": [
+      {
+        "model": "911",
+        "generations": ["992", "991"]
+      },
+      {
+        "model": "Cayenne",
+        "generations": ["E3", "E2"]
+      },
+      {
+        "model": "Macan",
+        "generations": ["95B", "95A"]
+      },
+      {
+        "model": "Panamera",
+        "generations": ["971", "970"]
+      },
+      {
+        "model": "Taycan",
+        "generations": ["J1"]
+      }
+    ]
+  },
+  {
+    "make": "Tesla",
+    "models": [
+      {
+        "model": "Model S",
+        "generations": ["2021+", "2016-2020"]
+      },
+      {
+        "model": "Model 3",
+        "generations": ["2021+", "2017-2020"]
+      },
+      {
+        "model": "Model X",
+        "generations": ["2021+", "2015-2020"]
+      },
+      {
+        "model": "Model Y",
+        "generations": ["2020+"]
+      }
+    ]
+  },
+  {
+    "make": "Volvo",
+    "models": [
+      {
+        "model": "XC90",
+        "generations": ["SPA"]
+      },
+      {
+        "model": "XC60",
+        "generations": ["SPA"]
+      },
+      {
+        "model": "S90",
+        "generations": ["SPA"]
+      },
+      {
+        "model": "V90",
+        "generations": ["SPA"]
+      }
+    ]
+  },
+  {
+    "make": "Land Rover",
+    "models": [
+      {
+        "model": "Range Rover",
+        "generations": ["L460", "L405"]
+      },
+      {
+        "model": "Range Rover Sport",
+        "generations": ["L461", "L494"]
+      },
+      {
+        "model": "Range Rover Velar",
+        "generations": ["L560"]
+      }
+    ]
+  },
+  {
+    "make": "Jaguar",
+    "models": [
+      {
+        "model": "F-Pace",
+        "generations": ["X761"]
+      },
+      {
+        "model": "I-Pace",
+        "generations": ["X590"]
+      }
+    ]
+  }
+]
