@@ -1,32 +1,20 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import type { Order, OrderItem, Product, OrderDetails, DiscountCode, OrderDiscountCode } from '@prisma/client'
 
-type OrderWithRelations = Prisma.OrderGetPayload<{
-  include: {
-    items: {
-      include: {
-        product: true
-      }
-    }
-    details: true
-    discountCodes: {
-      include: {
-        discountCode: true
-      }
-    }
-  }
-}>
+interface OrderItemWithProduct extends OrderItem {
+  product: Product
+}
 
-type OrderItemWithProduct = Prisma.OrderItemGetPayload<{
-  include: { product: true }
-}>
+interface OrderDiscountCodeWithDetails extends OrderDiscountCode {
+  discountCode: DiscountCode
+}
 
-type OrderDiscountCodeWithDetails = Prisma.OrderDiscountCodeGetPayload<{
-  include: { discountCode: true }
-}>
-
-type CompleteOrder = OrderWithRelations
+interface CompleteOrder extends Order {
+  items: OrderItemWithProduct[]
+  details: OrderDetails
+  discountCodes: OrderDiscountCodeWithDetails[]
+}
 
 export async function GET() {
   try {
