@@ -1,22 +1,38 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
+import { Prisma, Order, OrderItem, Product, OrderDetails, DiscountCode, OrderDiscountCode } from '@prisma/client'
 
-type OrderWithRelations = Prisma.OrderGetPayload<{
+const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
   include: {
     items: {
       include: {
         product: true
       }
-    }
-    details: true
+    },
+    details: true,
     discountCodes: {
       include: {
         discountCode: true
       }
     }
   }
-}>
+})
+
+type OrderWithRelations = Prisma.OrderGetPayload<typeof orderWithRelations>
+
+interface OrderItemWithProduct extends OrderItem {
+  product: Product
+}
+
+interface OrderDiscountCodeWithDetails extends OrderDiscountCode {
+  discountCode: DiscountCode
+}
+
+interface CompleteOrder extends Order {
+  items: OrderItemWithProduct[]
+  details: OrderDetails
+  discountCodes: OrderDiscountCodeWithDetails[]
+}
 
 export async function GET() {
   try {
@@ -37,13 +53,13 @@ export async function GET() {
       orderBy: { createdAt: 'desc' }
     })
 
-    const formattedOrders = orders.map((order: OrderWithRelations) => ({
+    const formattedOrders = orders.map((order: CompleteOrder) => ({
       id: order.id,
       createdAt: order.createdAt.toISOString(),
       total: order.total,
       paymentStatus: order.paymentStatus,
       orderStatus: order.orderStatus,
-      items: order.items.map(item => ({
+      items: order.items.map((item: OrderItemWithProduct) => ({
         id: item.id,
         productId: item.product.id,
         productName: item.product.name,
@@ -67,7 +83,7 @@ export async function GET() {
       paymentType: order.paymentType,
       courier: order.courier,
       awb: order.awb,
-      discountCodes: order.discountCodes.map(dc => ({
+      discountCodes: order.discountCodes.map((dc: OrderDiscountCodeWithDetails) => ({
         code: dc.discountCode.code,
         type: dc.discountCode.type,
         value: dc.discountCode.value

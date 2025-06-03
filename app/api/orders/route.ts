@@ -2,21 +2,23 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
-type OrderWithRelations = Prisma.OrderGetPayload<{
+const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
   include: {
     items: {
       include: {
         product: true
       }
-    }
-    details: true
+    },
+    details: true,
     discountCodes: {
       include: {
         discountCode: true
       }
     }
   }
-}>
+})
+
+type OrderWithRelations = Prisma.OrderGetPayload<typeof orderWithRelations>
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
