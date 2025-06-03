@@ -31,7 +31,7 @@ async function getDashboardStats() {
     },
   });
 
-  const totalRevenue = orders.reduce((acc: number, order) => acc + order.total, 0);
+  const totalRevenue = orders.reduce((acc: number, order: { total: number }) => acc + order.total, 0);
 
   // Get customer count
   const userIds = await prisma.order.findMany({
@@ -116,7 +116,7 @@ async function getDashboardStats() {
   });
 
   const lastMonthTotalRevenue = lastMonthRevenue.reduce(
-    (acc: number, order) => acc + order.total,
+    (acc: number, order: { total: number }) => acc + order.total,
     0
   );
 
@@ -134,7 +134,7 @@ async function getDashboardStats() {
   });
 
   const previousMonthTotalRevenue = previousMonthRevenue.reduce(
-    (acc: number, order) => acc + order.total,
+    (acc: number, order: { total: number }) => acc + order.total,
     0
   );
 
