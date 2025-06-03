@@ -1,6 +1,31 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+interface CarGeneration {
+  id: string;
+  name: string;
+  modelId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface CarModel {
+  id: string;
+  name: string;
+  makeId: string;
+  generations: CarGeneration[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface CarMake {
+  id: string;
+  name: string;
+  models: CarModel[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -187,11 +212,11 @@ export async function GET() {
     });
 
     // Transformăm datele în formatul așteptat de frontend
-    const formattedData = makes.map((make) => ({
+    const formattedData = makes.map((make: CarMake) => ({
       make: make.name,
-      models: make.models.map((model) => ({
+      models: make.models.map((model: CarModel) => ({
         model: model.name,
-        generations: model.generations.map((gen) => gen.name),
+        generations: model.generations.map((gen: CarGeneration) => gen.name),
       })),
     }));
 
