@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
+interface SizeVariant {
+  size: string;
+  price: number;
+  oldPrice: number | null;
+  stock: number;
+  lowStockThreshold: number | null;
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: { productId: string } }
@@ -17,7 +25,15 @@ export async function PUT(
       allowOutOfStock,
       showStockLevel,
       sizeVariants
-    } = body
+    } = body as {
+      name: string;
+      description: string;
+      images: string[];
+      collections: string[];
+      allowOutOfStock: boolean;
+      showStockLevel: boolean;
+      sizeVariants: SizeVariant[];
+    }
 
     // Use a transaction to ensure all operations succeed or fail together
     const updatedProduct = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -38,11 +54,11 @@ export async function PUT(
           showStockLevel,
           price: sizeVariants[0].price,
           oldPrice: sizeVariants[0].oldPrice,
-          sizes: sizeVariants.map((v: { size: string }) => v.size),
-          stock: sizeVariants.reduce((total: number, v: { stock: number }) => total + v.stock, 0),
-          lowStockThreshold: Math.min(...sizeVariants.map((v: { lowStockThreshold: number | null }) => v.lowStockThreshold || Infinity)),
+          sizes: sizeVariants.map((v: SizeVariant) => v.size),
+          stock: sizeVariants.reduce((total: number, v: SizeVariant) => total + v.stock, 0),
+          lowStockThreshold: Math.min(...sizeVariants.map((v: SizeVariant) => v.lowStockThreshold || Infinity)),
           sizeVariants: {
-            create: sizeVariants.map((v: any) => ({
+            create: sizeVariants.map((v: SizeVariant) => ({
               size: v.size,
               price: v.price,
               oldPrice: v.oldPrice,

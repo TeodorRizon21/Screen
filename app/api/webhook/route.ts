@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { stripe } from '@/lib/stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-02-24.acacia',
-});
+interface OrderItem {
+  productId: string;
+  quantity: number;
+  size: string;
+  price: number;
+}
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
 
     try {
       const { userId, detailsId, items } = session.metadata as { userId: string; detailsId: string; items: string };
-      const parsedItems = JSON.parse(items);
+      const parsedItems = JSON.parse(items) as OrderItem[];
 
       const order = await prisma.order.create({
         data: {
@@ -39,7 +44,7 @@ export async function POST(req: Request) {
           paymentType: 'card',
           details: { connect: { id: detailsId } },
           items: {
-            create: parsedItems.map((item: any) => ({
+            create: parsedItems.map((item: OrderItem) => ({
               productId: item.productId,
               quantity: item.quantity,
               size: item.size,

@@ -1,5 +1,22 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
+
+type OrderWithRelations = Prisma.OrderGetPayload<{
+  include: {
+    items: {
+      include: {
+        product: true
+      }
+    }
+    details: true
+    discountCodes: {
+      include: {
+        discountCode: true
+      }
+    }
+  }
+}>
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -28,7 +45,7 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'desc' }
     })
 
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = orders.map((order: OrderWithRelations) => ({
       id: order.id,
       createdAt: order.createdAt.toISOString(),
       total: order.total,
