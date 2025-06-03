@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { PrismaClient, Prisma } from '@prisma/client'
 
 export async function POST(
  request: Request,
@@ -21,9 +22,9 @@ export async function POST(
      ? 'Comanda se indreapta catre tine!' 
      : 'Comanda finalizata!'
 
-   await prisma.$transaction(async (prisma) => {
+   await prisma.$transaction(async (tx) => {
      // Update order status
-     const updatedOrder = await prisma.order.update({
+     const updatedOrder = await tx.order.update({
        where: { id: orderId },
        data: { 
          orderStatus: newStatus,
@@ -34,7 +35,7 @@ export async function POST(
      // If the order is being fulfilled, reduce stock
      if (newStatus === 'Comanda finalizata!') {
        for (const item of currentOrder.items) {
-         await prisma.sizeVariant.updateMany({
+         await tx.sizeVariant.updateMany({
            where: {
              productId: item.productId,
              size: item.size
