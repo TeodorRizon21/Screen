@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma, Order, OrderItem, Product, OrderDetails, DiscountCode, OrderDiscountCode } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
   include: {
@@ -20,19 +20,29 @@ const orderWithRelations = Prisma.validator<Prisma.OrderDefaultArgs>()({
 
 type OrderWithRelations = Prisma.OrderGetPayload<typeof orderWithRelations>
 
-interface OrderItemWithProduct extends OrderItem {
-  product: Product
-}
+type OrderItemWithProduct = Prisma.OrderItemGetPayload<{
+  include: { product: true }
+}>
 
-interface OrderDiscountCodeWithDetails extends OrderDiscountCode {
-  discountCode: DiscountCode
-}
+type OrderDiscountCodeWithDetails = Prisma.OrderDiscountCodeGetPayload<{
+  include: { discountCode: true }
+}>
 
-interface CompleteOrder extends Order {
-  items: OrderItemWithProduct[]
-  details: OrderDetails
-  discountCodes: OrderDiscountCodeWithDetails[]
-}
+type CompleteOrder = Prisma.OrderGetPayload<{
+  include: {
+    items: {
+      include: {
+        product: true
+      }
+    }
+    details: true
+    discountCodes: {
+      include: {
+        discountCode: true
+      }
+    }
+  }
+}>
 
 export async function GET() {
   try {
