@@ -15,7 +15,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Search, X } from "lucide-react";
 
 interface CollectionContentProps {
@@ -35,8 +34,6 @@ export default function CollectionContent({
   const router = useRouter();
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
-  const [maxPrice, setMaxPrice] = useState(1000);
   const [selectedMake, setSelectedMake] = useState<string>("_all");
   const [selectedModel, setSelectedModel] = useState<string>("_all");
   const [selectedGeneration, setSelectedGeneration] = useState<string>("_all");
@@ -70,49 +67,30 @@ export default function CollectionContent({
       (key) => COLLECTIONS[key as keyof typeof COLLECTIONS] === collection
     );
     setCollectionKey(currentCollectionKey || null);
-
-    // Dacă suntem pe o pagină de marcă specifică, setăm automat marca selectată
-    if (
-      currentCollectionKey &&
-      collectionToMake[currentCollectionKey as keyof typeof collectionToMake]
-    ) {
-      setSelectedMake(
-        collectionToMake[currentCollectionKey as keyof typeof collectionToMake]
-      );
-    } else {
-      setSelectedMake("_all");
-    }
   }, [collection, collectionToMake]);
 
   useEffect(() => {
     async function fetchProducts() {
       try {
+        console.log("🚀 STARTING fetchProducts...");
         const endpoint = `/api/products/collection?collection=${encodeURIComponent(
           collectionKey || collection
         )}`;
+        console.log("🌐 API Endpoint:", `${endpoint}&sort=${initialSort}`);
 
         const response = await fetch(`${endpoint}&sort=${initialSort}`);
+        console.log("📡 Response status:", response.status);
         if (!response.ok) throw new Error("Failed to fetch products");
         const data = await response.json();
         setProducts(data);
         setFilteredProducts(data);
 
-        // Găsim prețul maxim considerând toate variațiile produselor
-        let highestPrice = 0;
-        data.forEach((product: ProductWithVariants) => {
-          if (product.sizeVariants && product.sizeVariants.length > 0) {
-            product.sizeVariants.forEach((variant) => {
-              if (variant.price > highestPrice) {
-                highestPrice = variant.price;
-              }
-            });
-          }
-        });
 
-        setMaxPrice(Math.ceil(highestPrice / 100) * 100); // Rotunjește la 100 în sus
-        setPriceRange([0, highestPrice]);
 
         // Extrage opțiunile de filtrare disponibile
+        console.log("📊 Produse primite din API:", data);
+        console.log("📊 Primul produs:", data[0]);
+        
         const makes = Array.from(
           new Set(
             data
@@ -134,6 +112,10 @@ export default function CollectionContent({
               .map((p: ProductWithVariants) => p.generation)
           )
         );
+
+        console.log("🚗 Mărci găsite:", makes);
+        console.log("🚗 Modele găsite:", models);
+        console.log("🚗 Generații găsite:", generations);
 
         setAvailableMakes(makes as string[]);
         setAvailableModels(models as string[]);
@@ -244,23 +226,15 @@ export default function CollectionContent({
       );
     }
 
-    // Filtrare după preț - verificăm dacă ORICARE dintre variațiile produsului se încadrează în interval
-    result = result.filter((product) => {
-      // Dacă produsul nu are variații, returnăm false
-      if (!product.sizeVariants || product.sizeVariants.length === 0) {
-        return false;
-      }
 
-      // Verificăm dacă măcar o variație se încadrează în intervalul de preț
-      return product.sizeVariants.some(
-        (variant) =>
-          variant.price >= priceRange[0] && variant.price <= priceRange[1]
-      );
-    });
 
     // Filtrare după marcă
     if (selectedMake !== "_all") {
+      console.log("🔍 Filtrare după marca:", selectedMake);
+      console.log("🔍 Produse înainte de filtrare:", result.length);
       result = result.filter((product) => product.make === selectedMake);
+      console.log("🔍 Produse după filtrare:", result.length);
+      console.log("🔍 Exemplu produs după filtrare:", result[0]);
     }
 
     // Filtrare după model
@@ -276,7 +250,7 @@ export default function CollectionContent({
     }
 
     setFilteredProducts(result);
-  }, [searchQuery, priceRange, selectedMake, selectedModel, selectedGeneration, products]);
+  }, [searchQuery, selectedMake, selectedModel, selectedGeneration, products]);
 
   // Filtrarea produselor când se schimbă searchQuery sau filtrele
   useEffect(() => {
@@ -289,7 +263,6 @@ export default function CollectionContent({
 
   const resetFilters = () => {
     setSearchQuery("");
-    setPriceRange([0, maxPrice]);
 
     // Nu resetăm marca dacă suntem pe o pagină specifică unei mărci
     if (
@@ -307,9 +280,11 @@ export default function CollectionContent({
     return <div className="container mx-auto px-6 py-12">Loading...</div>;
   }
 
-  // Verifică dacă suntem pe o pagină specifică unei mărci
+  // Check if we're on a brand-specific page
   const isOnBrandPage = Boolean(
     collectionKey &&
+      collectionKey !== "All_Products" &&
+      collectionKey !== "Sales" &&
       collectionToMake[collectionKey as keyof typeof collectionToMake]
   );
 
@@ -392,56 +367,32 @@ export default function CollectionContent({
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Price Range */}
-          <div>
-            <Label className="mb-2 block">Interval de preț</Label>
-            <div className="py-6 px-2">
-              <Slider
-                defaultValue={[0, maxPrice]}
-                max={maxPrice}
-                step={1}
-                value={priceRange}
-                onValueChange={(value) =>
-                  setPriceRange(value as [number, number])
-                }
-                className="mb-4"
-              />
-              <div className="flex justify-between">
-                <span>{priceRange[0]} RON</span>
-                <span>{priceRange[1]} RON</span>
-              </div>
-            </div>
-          </div>
+        <div className={`grid grid-cols-1 gap-6 ${isOnBrandPage ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
 
-          {/* Make filter (dropdown) */}
-          <div>
-            <Label htmlFor="make-filter" className="mb-2 block">
-              Marcă
-            </Label>
-            <Select
-              value={selectedMake}
-              onValueChange={setSelectedMake}
-              disabled={isOnBrandPage}
-            >
-              <SelectTrigger className="w-full" id="make-filter">
-                <SelectValue placeholder="Selectează marca" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_all">Toate mărcile</SelectItem>
-                {availableMakes.map((make) => (
-                  <SelectItem key={make} value={make}>
-                    {make}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {isOnBrandPage && (
-              <p className="text-xs text-gray-500 mt-1">
-                Marca este fixată pentru această colecție
-              </p>
-            )}
-          </div>
+          {/* Make filter (dropdown) - only show on non-brand pages */}
+          {!isOnBrandPage && (
+            <div>
+              <Label htmlFor="make-filter" className="mb-2 block">
+                Marcă
+              </Label>
+              <Select
+                value={selectedMake}
+                onValueChange={setSelectedMake}
+              >
+                <SelectTrigger className="w-full" id="make-filter">
+                  <SelectValue placeholder="Selectează marca" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Toate mărcile</SelectItem>
+                  {availableMakes.map((make) => (
+                    <SelectItem key={make} value={make}>
+                      {make}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Model filter (dropdown) */}
           <div>
@@ -521,7 +472,7 @@ export default function CollectionContent({
         <div className="grid grid-cols-1 max-[750px]:grid-cols-1 min-[750px]:grid-cols-2 min-[1000px]:grid-cols-3 min-[1500px]:grid-cols-4 gap-8 md:gap-12 items-stretch">
           {filteredProducts.map((product) => (
             <div key={product.id} className="flex justify-center">
-              <ProductCard product={product} maxPrice={priceRange[1]} />
+              <ProductCard product={product} />
             </div>
           ))}
         </div>

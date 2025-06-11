@@ -153,14 +153,14 @@ export default function Home() {
           </div>
 
           {/* Titlu deasupra liniei */}
-          <div className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-10 text-center w-full max-w-4xl px-6">
+          <div className="absolute top-[20%] left-1/2 transform -translate-x-1/2 z-10 text-center w-full max-w-xl sm:max-w-4xl px-6">
             <h2 className="text-3xl md:text-4xl font-poppins font-thin uppercase text-white">
               Protejează ecranul mașinii așa cum trebuie!
             </h2>
           </div>
 
           {/* Text instructiv fix */}
-          <div className="absolute bottom-[20%] left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10">
+          <div className="absolute bottom-[30%] sm:bottom-[20%] left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10">
             <p className="text-white text-sm opacity-70 animate-pulse">
               PPF Lucios | PPF Mat -
             </p>
@@ -168,7 +168,7 @@ export default function Home() {
 
           {/* Linia de separare și handler */}
           <div
-            className="absolute top-[30%] bottom-[30%] w-1 bg-white cursor-ew-resize z-10"
+            className="absolute top-[38%] bottom-[38%] sm:top-[35%] sm:bottom-[35%] md:top-[30%] md:bottom-[30%] w-1 bg-white cursor-ew-resize z-10"
             style={{
               left: `${sliderPosition}%`,
               transform: "translateX(-50%)",
@@ -181,7 +181,7 @@ export default function Home() {
           </div>
 
           {/* Text explicativ */}
-          <div className="absolute bottom-[5%] left-1/2 transform -translate-x-1/2 z-10 text-center w-full max-w-4xl px-6">
+          <div className="absolute bottom-[10%] sm:bottom-[5%] left-1/2 transform -translate-x-1/2 z-10 text-center w-full max-w-4xl px-6">
             <p className="text-sm md:text-base font-sans font-extralight text-white/90 max-w-3xl mx-auto">
               Filmele de protecție premium pentru sistemele infotainment sunt
               esențiale pentru menținerea aspectului impecabil al ecranului tău.

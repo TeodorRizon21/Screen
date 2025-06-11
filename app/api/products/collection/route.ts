@@ -53,12 +53,14 @@ export async function GET(request: Request) {
           { collections: { has: collectionValue } }
         ]
       };
-    } else {
+    } else if (collectionValue) {
       whereCondition = {
         collections: {
           has: collectionValue,
         },
       };
+    } else {
+      whereCondition = {}; // Pentru cazurile când collectionValue este undefined
     }
 
     const products = await prisma.product.findMany({
