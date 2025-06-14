@@ -7,6 +7,8 @@ import { ScrollProvider } from "@/contexts/scroll-context";
 import { ScoutNavbar } from "@/components/newnavbar";
 import { Toaster } from "@/components/ui/toaster";
 import PageWrapper from "@/components/PageWrapper";
+import CookieConsent from "@/components/CookieConsent";
+import Footer from "@/components/Footer";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -24,15 +26,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ro">
-      <body className={inter.className}>
+      <body className={`${inter.className} flex flex-col min-h-screen`}>
         <ClerkProvider>
           <LanguageProvider>
             <CartProvider>
               <CarProvider>
                 <ScrollProvider>
                   <ScoutNavbar />
-                  <PageWrapper>{children}</PageWrapper>
+                  <div className="flex-1">
+                    <PageWrapper>{children}</PageWrapper>
+                  </div>
+                  <Footer />
                   <Toaster />
+                  <CookieConsent />
                 </ScrollProvider>
               </CarProvider>
             </CartProvider>

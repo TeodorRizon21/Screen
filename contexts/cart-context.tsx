@@ -188,27 +188,42 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      const parsedCart = JSON.parse(savedCart);
-      // Asigură-te că appliedDiscounts există în datele salvate
-      const cartWithDiscounts = {
-        ...parsedCart,
-        appliedDiscounts: parsedCart.appliedDiscounts || [],
-      };
-      dispatch({ type: "LOAD_CART", payload: cartWithDiscounts });
+    try {
+      // Verifică dacă utilizatorul a acceptat cookies
+      const cookieConsent = localStorage.getItem("cookie-consent");
+      if (cookieConsent === "accepted") {
+        const savedCart = localStorage.getItem("cart");
+        if (savedCart) {
+          const parsedCart = JSON.parse(savedCart);
+          // Asigură-te că appliedDiscounts există în datele salvate
+          const cartWithDiscounts = {
+            ...parsedCart,
+            appliedDiscounts: parsedCart.appliedDiscounts || [],
+          };
+          dispatch({ type: "LOAD_CART", payload: cartWithDiscounts });
+        }
+      }
+    } catch (error) {
+      console.error("Eroare la încărcarea coșului din localStorage:", error);
     }
   }, []);
 
   useEffect(() => {
-    // Salvează starea completă în localStorage
-    localStorage.setItem(
-      "cart",
-      JSON.stringify({
-        ...state,
-        appliedDiscounts: state.appliedDiscounts || [],
-      })
-    );
+    try {
+      // Salvează starea completă în localStorage doar dacă cookies sunt acceptate
+      const cookieConsent = localStorage.getItem("cookie-consent");
+      if (cookieConsent === "accepted") {
+        localStorage.setItem(
+          "cart",
+          JSON.stringify({
+            ...state,
+            appliedDiscounts: state.appliedDiscounts || [],
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Eroare la salvarea coșului în localStorage:", error);
+    }
   }, [state]);
 
   return (

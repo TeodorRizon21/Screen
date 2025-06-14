@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Search, X } from "lucide-react";
+import RequestFoilButton from "./RequestFoilButton";
 
 interface CollectionContentProps {
   collection: string;
@@ -305,6 +306,9 @@ export default function CollectionContent({
 
   return (
     <div className="container mx-auto px-6 py-12">
+      {/* Butonul pulsant doar pentru pagina "Toate Produsele" */}
+      {collection === COLLECTIONS.All_Products && <RequestFoilButton />}
+      
       <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
         <h1 className="text-3xl font-bold">
           {formatCollectionName(collection)}
