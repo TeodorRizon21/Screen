@@ -168,7 +168,7 @@ export default function Home() {
 
           {/* Linia de separare și handler */}
           <div
-            className="absolute top-[38%] bottom-[38%] sm:top-[35%] sm:bottom-[35%] md:top-[30%] md:bottom-[30%] w-1 bg-white cursor-ew-resize z-10"
+            className="absolute top-[38%] bottom-[38%] sm:top-[35%] sm:bottom-[35%] md:top-[30%] md:bottom-[30%] w-1 bg-white  z-10"
             style={{
               left: `${sliderPosition}%`,
               transform: "translateX(-50%)",

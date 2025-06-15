@@ -54,14 +54,14 @@ export default function Footer() {
                   Mașinile mele
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <Link
                   href="/cart"
                   className="text-gray-700 hover:text-black text-sm"
                 >
                   Coș de cumpărături
                 </Link>
-              </li>
+              </li> */}
               <li>
                 <Link
                   href="/return-form"

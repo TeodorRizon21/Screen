@@ -56,7 +56,7 @@ export default function Newsletter() {
               <h2 className="text-2xl md:text-4xl font-bold mb-2">
                 Abonează-te la Newsletter!
               </h2>
-              <p className="text-gray-700 text-sm">
+              <p className="text-gray-900 text-sm">
                 Primește notificări despre noile produse de protecție auto și
                 ofertele speciale. Îți promitem că nu te vom deranja cu emailuri
                 inutile, doar informații relevante pentru tine!
