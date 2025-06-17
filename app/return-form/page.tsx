@@ -45,31 +45,47 @@ export default function ReturnFormPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulare trimitere formular
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Cerere de retur trimisă",
-        description: "Vă vom contacta în cel mai scurt timp pentru procesarea cererii de retur.",
+      const response = await fetch('/api/return-request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
 
-      // Reset form
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        orderNumber: "",
-        productName: "",
-        returnReason: "",
-        description: "",
-        preferredSolution: "",
-      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'A apărut o eroare');
+      }
+
+      if (result.success) {
+        toast({
+          title: "Cerere de retur trimisă",
+          description: "Vă vom contacta în cel mai scurt timp pentru procesarea cererii de retur.",
+        });
+
+        // Reset form
+        setFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          orderNumber: "",
+          productName: "",
+          returnReason: "",
+          description: "",
+          preferredSolution: "",
+        });
+      } else {
+        throw new Error(result.error || 'A apărut o eroare');
+      }
 
     } catch (error) {
+      console.error("Eroare la trimiterea cererii de retur:", error);
       toast({
         title: "Eroare",
-        description: "Nu am putut trimite cererea de retur. Vă rugăm să încercați din nou.",
+        description: error instanceof Error ? error.message : "Nu am putut trimite cererea de retur. Vă rugăm să încercați din nou.",
         variant: "destructive",
       });
     } finally {

@@ -38,16 +38,28 @@ export default function RequestFoilPage() {
     setIsSubmitting(true);
 
     try {
-      // Simulez trimiterea cererii (înlocuiește cu API call real)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Aici vei adăuga logica pentru trimiterea emailului sau salvarea în baza de date
-      console.log("Cerere trimisă:", formData);
-      
-      setIsSubmitted(true);
+      const response = await fetch('/api/request-foil', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'A apărut o eroare');
+      }
+
+      if (result.success) {
+        setIsSubmitted(true);
+      } else {
+        throw new Error(result.error || 'A apărut o eroare');
+      }
     } catch (error) {
       console.error("Eroare la trimiterea cererii:", error);
-      alert("A apărut o eroare. Te rog să încerci din nou.");
+      alert(error instanceof Error ? error.message : "A apărut o eroare. Te rog să încerci din nou.");
     } finally {
       setIsSubmitting(false);
     }
