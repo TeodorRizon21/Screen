@@ -13,6 +13,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Download } from "lucide-react";
+import ReviewModal from "@/components/ReviewModal";
 
 type OrderItem = {
   id: string;
@@ -85,6 +86,11 @@ export default function OrdersContent({ userId }: { userId: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    productId: string;
+    orderId: string;
+    productName: string;
+  } | null>(null);
 
   useEffect(() => {
     async function fetchOrders() {
@@ -201,27 +207,27 @@ export default function OrdersContent({ userId }: { userId: string }) {
                     <div className="flex flex-wrap gap-2">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.paymentStatus === "paid"
+                          order.paymentStatus === "COMPLETED"
                             ? "bg-green-100 text-green-800"
                             : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {order.paymentStatus === "paid"
+                        {order.paymentStatus === "COMPLETED"
                           ? "Plătit"
                           : "În așteptare"}
                       </span>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.orderStatus === "delivered"
+                          order.orderStatus === "Comanda finalizata!"
                             ? "bg-green-100 text-green-800"
-                            : order.orderStatus === "shipped"
+                            : order.orderStatus === "Comanda expediata!"
                             ? "bg-blue-100 text-blue-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {order.orderStatus === "delivered"
+                        {order.orderStatus === "Comanda finalizata!"
                           ? "Livrat"
-                          : order.orderStatus === "shipped"
+                          : order.orderStatus === "Comanda expediata!"
                           ? "În livrare"
                           : "În procesare"}
                       </span>
@@ -246,15 +252,15 @@ export default function OrdersContent({ userId }: { userId: string }) {
                       <div className="space-y-1">
                         <p className="text-sm">
                           <span className="font-medium">Status Plată:</span>{" "}
-                          {order.paymentStatus === "paid"
+                          {order.paymentStatus === "COMPLETED"
                             ? "Plătit"
                             : "În așteptare"}
                         </p>
                         <p className="text-sm">
                           <span className="font-medium">Status Comandă:</span>{" "}
-                          {order.orderStatus === "delivered"
+                          {order.orderStatus === "Comanda finalizata!"
                             ? "Livrat"
-                            : order.orderStatus === "shipped"
+                            : order.orderStatus === "Comanda expediata!"
                             ? "În livrare"
                             : "În procesare"}
                         </p>
@@ -326,27 +332,45 @@ export default function OrdersContent({ userId }: { userId: string }) {
                       {order.items.map((item) => (
                         <div
                           key={item.id}
-                          className="flex items-start gap-4 p-4 border rounded-lg"
+                          className="flex flex-col p-4 border rounded-lg"
                         >
-                          <Image
-                            src={item.image}
-                            alt={item.productName}
-                            width={80}
-                            height={80}
-                            className="rounded-md object-cover"
-                          />
-                          <div className="flex-1">
-                            <p className="font-medium">{item.productName}</p>
-                            <p className="text-sm text-gray-600">
-                              Mărime: {item.size}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {item.quantity} x ${item.price.toFixed(2)}
-                            </p>
-                            <p className="font-medium mt-1">
-                              ${(item.quantity * item.price).toFixed(2)}
-                            </p>
+                          <div className="flex items-start gap-4">
+                            <Image
+                              src={item.image}
+                              alt={item.productName}
+                              width={80}
+                              height={80}
+                              className="rounded-md object-cover"
+                            />
+                            <div className="flex-1">
+                              <p className="font-medium">{item.productName}</p>
+                              <p className="text-sm text-gray-600">
+                                Mărime: {item.size}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {item.quantity} x ${item.price.toFixed(2)}
+                              </p>
+                              <p className="font-medium mt-1">
+                                ${(item.quantity * item.price).toFixed(2)}
+                              </p>
+                            </div>
                           </div>
+                          {order.orderStatus === "Comanda finalizata!" && (
+                            <Button
+                              variant="outline"
+                              className="w-full mt-4"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setSelectedProduct({
+                                  productId: item.productId,
+                                  orderId: order.id,
+                                  productName: item.productName,
+                                });
+                              }}
+                            >
+                              Lasă o recenzie
+                            </Button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -367,6 +391,15 @@ export default function OrdersContent({ userId }: { userId: string }) {
           </Accordion>
         ))}
       </div>
+      {selectedProduct && (
+        <ReviewModal
+          isOpen={!!selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          productId={selectedProduct.productId}
+          orderId={selectedProduct.orderId}
+          productName={selectedProduct.productName}
+        />
+      )}
     </div>
   );
 }

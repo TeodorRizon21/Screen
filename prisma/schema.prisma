@@ -28,6 +28,7 @@ model Product {
   model             String?
   generation        String?
   compatibleCars    Json?
+  reviews           Review[]
 }
 
 model Order {
@@ -46,6 +47,7 @@ model Order {
   detailsId         String              @db.ObjectId
   discountCodes     OrderDiscountCode[]
   checkoutSessionId String?
+  reviews           Review[]
 }
 
 model OrderItem {
@@ -180,11 +182,24 @@ model UserCar {
 }
 
 model newsletterSubscriber {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  email           String    @unique
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  isActive        Boolean   @default(true)
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  email            String    @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  isActive         Boolean   @default(true)
   unsubscribeToken String?
   tokenExpiresAt   DateTime?
+}
+
+model Review {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  productId String   @db.ObjectId
+  orderId   String   @db.ObjectId
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
 }

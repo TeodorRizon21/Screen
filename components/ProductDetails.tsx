@@ -16,6 +16,7 @@ import Carousel from "@/components/Carousel";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import { ProductWithVariants, SizeVariant } from "@/lib/types";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
+import ProductReviews from "@/components/ProductReviews";
 
 interface ProductDetailsProps {
   product: ProductWithVariants;
@@ -247,6 +248,11 @@ export default function ProductDetails({
       <div className="max-w-6xl mx-auto mt-16">
         <h2 className="text-2xl font-bold mb-6">Vezi cum se aplică</h2>
         <YouTubePlayer videoId="6CF0bFJENXo" />
+      </div>
+
+      {/* Secțiunea cu recenzii */}
+      <div className="max-w-6xl mx-auto mt-16">
+        <ProductReviews productId={product.id} />
       </div>
     </div>
   );
