@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { Facebook, Instagram, Twitter, MapPin, Phone, Mail } from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Twitter,
+  MapPin,
+  Phone,
+  Mail,
+} from "lucide-react";
 
 export default function Footer() {
   return (
@@ -10,8 +17,8 @@ export default function Footer() {
           <div className="md:col-span-1">
             <h3 className="font-bold text-xl mb-4">ScreenShield</h3>
             <p className="text-sm text-gray-700 mb-4">
-              Protecție premium pentru sistemele infotainment auto. Oferim
-              cele mai bune soluții pentru toate mărcile și modelele.
+              Protecție premium pentru sistemele infotainment auto. Oferim cele
+              mai bune soluții pentru toate mărcile și modelele.
             </p>
             <div className="flex space-x-4">
               <Link href="#" className="text-gray-700 hover:text-black">
@@ -26,7 +33,61 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Coloana 2 - Meniu Rapid */}
+          {/* Coloana 2 - Informații legale */}
+          <div className="md:col-span-1">
+            <h3 className="font-bold text-lg mb-4">Informații legale</h3>
+            <ul className="space-y-2 mb-6">
+              <li>
+                <Link
+                  href="/politica-retur"
+                  className="text-gray-700 hover:text-black text-sm"
+                >
+                  Politica de retur
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/politica-confidentialitate"
+                  className="text-gray-700 hover:text-black text-sm"
+                >
+                  Politica de confidențialitate
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/termeni-conditii"
+                  className="text-gray-700 hover:text-black text-sm"
+                >
+                  Termeni și condiții
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coloana 3 - Contact */}
+          <div className="md:col-span-1">
+            <h3 className="font-bold text-lg mb-4">Contact</h3>
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <MapPin size={18} className="text-gray-700 mt-0.5" />
+                <span className="text-sm text-gray-700">
+                  Strada Exemplu, nr. 123, București
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone size={18} className="text-gray-700" />
+                <span className="text-sm text-gray-700">+40 123 456 789</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Mail size={18} className="text-gray-700" />
+                <span className="text-sm text-gray-700">
+                  contact@screenshield.ro
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Coloana 4 - Meniu Rapid */}
           <div className="md:col-span-1">
             <h3 className="font-bold text-lg mb-4">Meniu Rapid</h3>
             <ul className="space-y-2">
@@ -72,60 +133,6 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-
-          {/* Coloana 3 - Contact */}
-          <div className="md:col-span-1">
-            <h3 className="font-bold text-lg mb-4">Contact</h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-2">
-                <MapPin size={18} className="text-gray-700 mt-0.5" />
-                <span className="text-sm text-gray-700">
-                  Strada Exemplu, nr. 123, București
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={18} className="text-gray-700" />
-                <span className="text-sm text-gray-700">+40 123 456 789</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail size={18} className="text-gray-700" />
-                <span className="text-sm text-gray-700">
-                  contact@screenshield.ro
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Coloana 4 - Informații legale */}
-          <div className="md:col-span-1">
-            <h3 className="font-bold text-lg mb-4">Informații legale</h3>
-            <ul className="space-y-2 mb-6">
-              <li>
-                <Link
-                  href="/politica-retur"
-                  className="text-gray-700 hover:text-black text-sm"
-                >
-                  Politica de retur
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/politica-confidentialitate"
-                  className="text-gray-700 hover:text-black text-sm"
-                >
-                  Politica de confidențialitate
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/termeni-conditii"
-                  className="text-gray-700 hover:text-black text-sm"
-                >
-                  Termeni și condiții
-                </Link>
-              </li>
-                         </ul>
-          </div>
         </div>
 
         {/* Copyright */}
@@ -138,4 +145,4 @@ export default function Footer() {
       </div>
     </div>
   );
-} 
+}

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Plus, Trash2, Pencil, Percent, Tag } from "lucide-react";
 import LoadingSpinner from "./LoadingSpinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type DiscountType = "free_shipping" | "percentage" | "fixed";
 
@@ -30,6 +31,8 @@ type DiscountCode = {
   totalUses: number;
   expirationDate: string | null;
   canCumulate: boolean;
+  totalTransactions?: number;
+  totalTransactionAmount?: number;
 };
 
 // Componente personalizate pentru a înlocui componentele lipsă
@@ -51,87 +54,6 @@ function Alert({
 
 function AlertDescription({ children }: { children: React.ReactNode }) {
   return <p className="text-yellow-800 text-sm">{children}</p>;
-}
-
-// Tipuri pentru componentele Tabs
-interface TabsProps {
-  defaultValue: string;
-  className?: string;
-  children: React.ReactNode;
-}
-
-interface TabsListProps {
-  className?: string;
-  children: React.ReactNode;
-}
-
-interface TabsTriggerProps {
-  value: string;
-  children: React.ReactNode;
-  activeTab?: string;
-  setActiveTab?: (value: string) => void;
-}
-
-interface TabsContentProps {
-  value: string;
-  children: React.ReactNode;
-  className?: string;
-  activeTab?: string;
-}
-
-// Componente simplificate Tabs
-function Tabs({ defaultValue, className, children }: TabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultValue);
-
-  // Clonăm copiii și le transmitem valoarea tab-ului activ
-  const childrenWithProps = React.Children.map(children, (child) => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, {
-        activeTab,
-        setActiveTab,
-      } as any);
-    }
-    return child;
-  });
-
-  return <div className={className}>{childrenWithProps}</div>;
-}
-
-function TabsList({ className, children }: TabsListProps) {
-  return <div className={className}>{children}</div>;
-}
-
-function TabsTrigger({
-  value,
-  children,
-  activeTab,
-  setActiveTab,
-}: TabsTriggerProps) {
-  const isActive = activeTab === value;
-
-  return (
-    <button
-      className={`px-4 py-2 text-sm font-medium ${
-        isActive
-          ? "bg-white border-b-2 border-black"
-          : "bg-gray-100 text-gray-500"
-      }`}
-      onClick={() => setActiveTab && setActiveTab(value)}
-    >
-      {children}
-    </button>
-  );
-}
-
-function TabsContent({
-  value,
-  children,
-  className,
-  activeTab,
-}: TabsContentProps) {
-  if (value !== activeTab) return null;
-
-  return <div className={className}>{children}</div>;
 }
 
 export default function DiscountManager() {
@@ -355,49 +277,57 @@ export default function DiscountManager() {
                       </span>
                     </div>
                   </div>
-                  <CardDescription className="mt-1">
-                    {discount.expirationDate
-                      ? `Expiră la: ${new Date(
-                          discount.expirationDate
-                        ).toLocaleDateString()}`
-                      : "Fără expirare"}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <div className="text-sm space-y-1">
-                    {discount.type !== "free_shipping" && (
-                      <div className="flex items-center text-gray-600">
-                        <Percent className="h-4 w-4 mr-2" />
-                        Valoare: {discount.value}{" "}
-                        {discount.type === "percentage" ? "%" : "RON"}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500">Total Utilizări</p>
+                        <p className="text-lg font-semibold">
+                          {discount.totalUses}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">
+                          Total Tranzacții
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {discount.totalTransactionAmount?.toFixed(2) ||
+                            "0.00"}{" "}
+                          RON
+                        </p>
+                      </div>
+                    </div>
+                    {discount.expirationDate && (
+                      <div>
+                        <p className="text-sm text-gray-500">Expiră la</p>
+                        <p className="text-sm">
+                          {new Date(discount.expirationDate).toLocaleDateString(
+                            "ro-RO"
+                          )}
+                        </p>
                       </div>
                     )}
-                    <div className="flex items-center text-gray-600">
-                      <Tag className="h-4 w-4 mr-2" />
-                      Utilizări totale: {discount.totalUses}
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingDiscount(discount)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Editează
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteDiscount(discount.id)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Șterge
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-end gap-2 pt-2 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingDiscount(discount)}
-                    className="text-gray-600 hover:text-blue-600"
-                  >
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Editează
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteDiscount(discount.id)}
-                    className="text-gray-600 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Șterge
-                  </Button>
-                </CardFooter>
               </Card>
             ))}
 
@@ -516,7 +446,7 @@ export default function DiscountManager() {
                   }
                 />
               </div>
-              <div className="space-y-2 col-span-2 flex items-center space-x-2">
+              <div className="space-y-2 flex items-center space-x-2">
                 <Checkbox
                   id="canCumulate"
                   checked={newDiscount.canCumulate}
@@ -533,13 +463,10 @@ export default function DiscountManager() {
               </div>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button
-              onClick={handleAddDiscount}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Adaugă reducere
+          <CardFooter className="flex justify-end">
+            <Button onClick={handleAddDiscount} disabled={loading}>
+              <Plus className="h-4 w-4 mr-1" />
+              Adaugă Reducere
             </Button>
           </CardFooter>
         </Card>

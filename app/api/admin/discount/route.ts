@@ -3,8 +3,30 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const discountCodes = await prisma.discountCode.findMany()
-    return NextResponse.json(discountCodes)
+    const discountCodes = await prisma.discountCode.findMany({
+      include: {
+        orders: {
+          include: {
+            order: true
+          }
+        }
+      }
+    })
+
+    const formattedDiscountCodes = discountCodes.map(code => {
+      // Calculate total transaction amount for this discount code
+      const totalTransactionAmount = code.orders.reduce((sum, orderDiscount) => {
+        return sum + orderDiscount.order.total
+      }, 0)
+
+      return {
+        ...code,
+        totalTransactions: code.orders.length,
+        totalTransactionAmount: totalTransactionAmount
+      }
+    })
+
+    return NextResponse.json(formattedDiscountCodes)
   } catch (error) {
     console.error('Error fetching discount codes:', error)
     return NextResponse.json({ error: 'Failed to fetch discount codes' }, { status: 500 })
@@ -57,4 +79,3 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: 'Failed to update discount code' }, { status: 500 })
   }
 }
-
