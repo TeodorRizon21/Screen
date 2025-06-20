@@ -71,7 +71,7 @@ export default function Footer() {
               <div className="flex items-start gap-2">
                 <MapPin size={18} className="text-gray-700 mt-0.5" />
                 <span className="text-sm text-gray-700">
-                  Strada Exemplu, nr. 123, București
+                București, Sector 6, Aleea Potaisa nr 3
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -109,10 +109,10 @@ export default function Footer() {
               </li>
               <li>
                 <Link
-                  href="/my-cars"
+                  href="/despre-folie"
                   className="text-gray-700 hover:text-black text-sm"
                 >
-                  Mașinile mele
+                  Despre Folie
                 </Link>
               </li>
               {/* <li>

@@ -25,7 +25,7 @@ export default function MobileMenu() {
 
   const getHref = (collection: string) => {
     if (collection === COLLECTIONS.Home) return "/";
-    if (collection === COLLECTIONS.My_Cars) return "/my-cars";
+    if (collection === COLLECTIONS.About_Foil) return "/despre-folie";
     if (collection === COLLECTIONS.All_Products)
       return "/collection/allproducts";
     const collectionKey = Object.keys(COLLECTIONS).find(

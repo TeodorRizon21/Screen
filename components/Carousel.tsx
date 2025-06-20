@@ -14,7 +14,6 @@ export default function Carousel({ images }: CarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
-  // Don't show navigation if there's only one image
   const showNavigation = images.length > 1;
 
   const prevSlide = () => {
@@ -40,7 +39,6 @@ export default function Carousel({ images }: CarouselProps) {
     const diff = touchStart - currentTouch;
 
     if (Math.abs(diff) > 50) {
-      // Threshold pentru swipe
       if (diff > 0) {
         nextSlide();
       } else {
@@ -55,7 +53,7 @@ export default function Carousel({ images }: CarouselProps) {
   };
 
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="h-full w-full flex flex-col relative">
       <div
         className="relative h-full w-full flex-1"
         onTouchStart={handleTouchStart}
@@ -68,37 +66,36 @@ export default function Carousel({ images }: CarouselProps) {
             alt="Product image"
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-contain p-2"
+            className="object-contain p-2 rounded-xl"
             priority
           />
         </div>
 
         {showNavigation && (
-          <div className="absolute inset-0 flex items-center justify-between px-2 pointer-events-none">
+          <div className="absolute -left-12 -right-12 top-1/2 transform -translate-y-1/2 flex items-center justify-between pointer-events-none z-10">
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-white/80 shadow-md pointer-events-auto"
+              className="h-10 w-10 rounded-full bg-white shadow-lg pointer-events-auto border-2 border-gray-300 hover:border-black"
               onClick={prevSlide}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-5 w-5" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-white/80 shadow-md pointer-events-auto"
+              className="h-10 w-10 rounded-full bg-white shadow-lg pointer-events-auto border-2 border-gray-300 hover:border-black"
               onClick={nextSlide}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
         )}
       </div>
 
       {showNavigation && (
-        <>
-          {/* Puncte pentru mobil și desktop */}
-          <div className="flex gap-2 justify-center mt-2">
+        <div className="mt-4">
+          <div className="flex gap-2 justify-center">
             {images.map((_, index) => (
               <button
                 key={index}
@@ -111,7 +108,6 @@ export default function Carousel({ images }: CarouselProps) {
             ))}
           </div>
 
-          {/* Miniaturi doar pentru desktop */}
           <div className="hidden md:flex gap-2 overflow-x-auto mt-4 justify-center">
             {images.map((image, index) => (
               <button
@@ -132,7 +128,7 @@ export default function Carousel({ images }: CarouselProps) {
               </button>
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

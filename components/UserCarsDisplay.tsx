@@ -42,8 +42,8 @@ export default function UserCarsDisplay() {
         <p className="text-gray-600 mb-4 text-sm">
           Adaugă mașinile tale pentru produse compatibile
         </p>
-        <Button size="sm" onClick={() => router.push("/my-cars")}>
-          Adaugă mașini
+        <Button size="sm" onClick={() => router.push("/despre-folie")}>
+          Află mai multe
           <Plus className="ml-2 h-4 w-4" />
         </Button>
       </div>
@@ -96,10 +96,10 @@ export default function UserCarsDisplay() {
 
       <div className="text-center mt-8">
         <Link
-          href="/my-cars"
+          href="/despre-folie"
           className="inline-flex items-center text-sm text-gray-700 hover:text-black font-medium"
         >
-          Gestionează mașinile tale
+          Află mai multe
           <ChevronRight className="ml-1 h-4 w-4" />
         </Link>
       </div>
