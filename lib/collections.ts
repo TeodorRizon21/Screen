@@ -1,6 +1,6 @@
 export const COLLECTIONS = {
   Home: "Acasă",
-  My_Cars: "Mașinile mele",
+  About_Foil: "Despre Folie",
   All_Products: "Toate produsele",
   Bmw: "BMW",
   Mercedes_Benz: "Mercedes-Benz",

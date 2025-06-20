@@ -140,10 +140,10 @@ export function ScoutNavbar() {
             <ul className="c-header_nav">
               <li className="c-header_nav-item">
                 <Link
-                  href="/my-cars"
+                  href="/despre-folie"
                   className="c-header_link -product c-button -link"
                 >
-                  Mașinile Mele
+                  Despre Folie
                 </Link>
               </li>
               <li className="c-header_nav-item">
@@ -286,11 +286,11 @@ export function ScoutNavbar() {
           <div className="block lg:hidden">
             <div className="flex flex-col gap-2">
               <Link
-                href="/my-cars"
+                href="/despre-folie"
                 className="block py-2 px-4 hover:bg-gray-100 rounded-md transition-colors text-sm"
                 onClick={() => setIsOpen(false)}
               >
-                Mașinile Mele
+                Despre Folie
               </Link>
               <Link
                 href="/collection/allproducts"

@@ -65,6 +65,13 @@ const formSchema = z
     companyStreet: z.string().optional(),
     companyCity: z.string().optional(),
     companyCounty: z.string().optional(),
+
+    subscribeToNewsletter: z.boolean().optional(),
+    termsAccepted: z
+      .boolean()
+      .refine((val) => val === true, {
+        message: "Trebuie sa accepti termenii si conditiile pentru a continua",
+      }),
   })
   .refine(
     (data) => {
@@ -122,6 +129,8 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
       companyStreet: "",
       companyCity: "",
       companyCounty: "",
+      subscribeToNewsletter: false,
+      termsAccepted: false,
     },
   });
 
@@ -184,6 +193,20 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
           `userDetails_${userId}`,
           JSON.stringify(detailsToSave)
         );
+      }
+
+      // Handle newsletter subscription
+      if (values.subscribeToNewsletter) {
+        try {
+          await fetch('/api/newsletter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: values.email }),
+          });
+          // Nu blocam procesul de checkout daca abonarea esueaza, doar inregistram in consola
+        } catch (subError) {
+          console.error("Failed to subscribe to newsletter:", subError);
+        }
       }
 
       const orderDetailsResponse = await fetch("/api/order-details", {
@@ -604,6 +627,59 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                 )}
               />
             )}
+
+            <Separator />
+
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="termsAccepted"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Sunt de acord cu{" "}
+                        <a
+                          href="/termeni-conditii"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Termenii și Condițiile
+                        </a>
+                        *
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="subscribeToNewsletter"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Doresc să mă abonez la newsletter pentru a primi oferte și noutăți.
+                      </FormLabel>
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <Button
               type="submit"

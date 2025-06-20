@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import ProductCarousel from "@/components/ProductCarousel";
 import { ProductWithVariants } from "@/lib/types";
 import Newsletter from "@/components/Newsletter";
+import { Button } from "@/components/ui/button";
 
 interface HeroSlide {
   id: string;
@@ -127,10 +128,10 @@ export default function Home() {
             <div className="relative w-full h-[90vh] md:h-full">
               {/* Imaginea de bază (navcuamp) */}
               <Image
-                src="/navcuamp.png"
+                src="/navfaraamp2.png"
                 alt="Hero Background Before"
                 fill
-                className="object-contain pointer-events-none"
+                className="object-contain opacity-100 pointer-events-none"
                 priority
               />
 
@@ -181,39 +182,96 @@ export default function Home() {
           </div>
 
           {/* Text explicativ */}
-          <div className="absolute bottom-[10%] sm:bottom-[5%] left-1/2 transform -translate-x-1/2 z-10 text-center w-full max-w-4xl px-6">
-            <p className="text-sm md:text-base font-sans font-extralight text-white/90 max-w-3xl mx-auto">
-              Filmele de protecție premium pentru sistemele infotainment sunt
-              esențiale pentru menținerea aspectului impecabil al ecranului tău.
-              Cu o protecție de înaltă calitate, previi zgârieturile, amprentele
-              și deteriorările cauzate de uzura zilnică, păstrând claritatea și
-              funcționalitatea perfectă a display-ului pentru o experiență de
-              conducere optimă.
+          <div className="absolute bottom-[10%] sm:bottom-[10%] left-1/2 transform -translate-x-1/2 z-10 text-center w-full max-w-4xl px-6">
+            <p className="text-2xl md:text-3xl font-sans font-bold  text-white/90 max-w-3xl mx-auto">
+            Protecție discretă, claritate deplină
             </p>
           </div>
         </div>
       </section>
 
-      {/* Secțiunea pentru mașinile utilizatorului și produse */}
-      <section className="py-8 mb-8 bg-gray-50">
+      {/* Secțiunea descriptivă despre folie */}
+      <section className="py-16 mb-8 bg-gray-50">
         <div className="container mx-auto px-6">
-          <div className="text-center space-y-2 mb-8 font-poppins relative pb-6">
-            <p className="text-sm uppercase tracking-wider text-black font-medium">
-              ALEGE PROTECȚIA PERFECTĂ
-            </p>
-            <h2 className="text-2xl md:text-3xl font-bold">
-              {isSignedIn ? "Produse pentru mașinile tale" : "Produse Populare"}
-            </h2>
-            <div className="absolute -bottom-[0.2rem] left-1/2 transform -translate-x-1/2 w-40 h-1 bg-[#F57228]"></div>
-          </div>
-
-          {isSignedIn ? (
-            <UserCarsDisplay />
-          ) : (
-            <div className="relative">
-              <ProductCarousel products={popularProducts} />
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              {/* Text descriptiv */}
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <p className="text-sm uppercase tracking-wider text-black font-medium">
+                    TEHNOLOGIA SCREENSHIELD
+                  </p>
+                  <h2 className="text-3xl md:text-4xl font-bold text-black">
+                    Protecție avansată pentru mașina ta
+                  </h2>
+                </div>
+                
+                <div className="space-y-4 text-gray-700 leading-relaxed">
+                  <p className="text-lg">
+                    Folia de protecție ScreenShield reprezintă cea mai avansată tehnologie 
+                    în domeniul protecției vopselei auto. Dezvoltată cu materiale premium 
+                    și tehnologii inovatoare, oferă protecție completă împotriva zgârieturilor, 
+                    pietrelor și altor elemente care pot deteriora aspectul mașinii tale.
+                  </p>
+                  
+                  <p className="text-lg">
+                    Proprietatea noastră unică de auto-regenerare permite foliei să se repare 
+                    automat la temperaturi ridicate, eliminând zgârieturile minore și păstrând 
+                    aspectul impecabil al vopselei. Cu o transparență de 99.9% și o grosime 
+                    optimă de 200 microni, folia este aproape invizibilă după aplicare.
+                  </p>
+                  
+                  <p className="text-lg">
+                    Testată în condiții extreme și certificată conform standardelor internaționale, 
+                    folia ScreenShield rezistă la temperaturi între -40°C și +80°C, oferind 
+                    protecție durabilă timp de 5 ani cu garanție completă.
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-4 pt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-green-600 font-medium">5 ani garanție</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-blue-600 font-medium">Auto-regenerare</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    <span className="text-purple-600 font-medium">Calitate premium</span>
+                  </div>
+                </div>
+                
+                <div className="pt-6">
+                  <Link href="/collection/allproducts">
+                    <Button className="bg-black hover:bg-gray-800 text-white px-8 py-3 text-lg font-medium transition-all duration-300">
+                      Vezi toate produsele
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+              
+              {/* Placeholder pentru GIF */}
+              <div className="relative">
+                <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+                  <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto flex items-center justify-center">
+                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-lg font-medium text-gray-700">GIF demonstrativ</p>
+                        <p className="text-sm text-gray-500">Va fi adăugat aici</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </section>
 

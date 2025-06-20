@@ -34,6 +34,18 @@ export default function PoliticaReturPage() {
               produsele achiziționdate online, fără a invoca un motiv, în termen de <strong>14 zile calendaristice</strong> de 
               la data primirii produsului, completând formularul disponibil pe site.
             </p>
+
+            <p className="text-gray-700 leading-relaxed mt-4">
+              In cazul in care ati comandat un produs pentru care pe site sunt specificate marca, modelul, anii de fabricație și/sau dimensiunile, iar acesta nu corespunde acestor detalii, vă vom returna integral contravaloarea, chiar dacă produsul (folia) prezintă urme de folosire și nu mai este în starea inițială. 
+              In cazul in care produsul a fost comandat incorect, deși pe site sunt oferite toate informațiile necesare privind marca, modelul, anii de fabricație și dimensiunile, iar folia prezintă urme de folosire sau a fost desfăcută, returul nu va fi acceptat. Responsabilitatea alegerii corecte aparține cumpărătorului, care are obligația de a verifica și măsura în prealabil compatibilitatea produsului cu vehiculul său.
+
+
+
+            </p>
+
+            <p className="text-gray-700 leading-relaxed mt-4">
+              Pentru informații adiționale contactați-ne la adresa de email din secțiunea contact.
+            </p>
             <p className="text-gray-700 leading-relaxed mt-4">
               Pentru informații adiționale contactați-ne la adresa de email din secțiunea contact.
             </p>

@@ -17,6 +17,7 @@ import YouTubePlayer from "@/components/YouTubePlayer";
 import { ProductWithVariants, SizeVariant } from "@/lib/types";
 import { ShoppingCart, Plus, Minus } from "lucide-react";
 import ProductReviews from "@/components/ProductReviews";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface ProductDetailsProps {
   product: ProductWithVariants;
@@ -65,10 +66,32 @@ export default function ProductDetails({
     setQuantity((prev) => Math.max(prev - 1, 1));
   };
 
-  const images =
-    product.images && product.images.length > 0
-      ? product.images
-      : ["/placeholder.svg?height=500&width=500"];
+  // Procesare imagini - gestionează diferite formate posibile
+  let images: string[] = [];
+  
+  if (product.images) {
+    if (Array.isArray(product.images)) {
+      images = product.images.filter(img => img && img.trim() !== '');
+    } else if (typeof product.images === 'string') {
+      // Încearcă să parsezi ca JSON dacă este string
+      try {
+        const parsed = JSON.parse(product.images);
+        images = Array.isArray(parsed) ? parsed.filter(img => img && img.trim() !== '') : [product.images];
+      } catch {
+        // Dacă nu este JSON valid, tratează ca o singură imagine
+        images = [product.images];
+      }
+    }
+  }
+  
+  // Fallback la placeholder dacă nu sunt imagini
+  if (images.length === 0) {
+    images = ["/placeholder.svg?height=500&width=500"];
+  }
+
+  // Debug: log images array
+  console.log("Product images:", product.images);
+  console.log("Processed images:", images);
 
   const selectedVariant = product.sizeVariants.find(
     (v) => v.size === selectedSize
@@ -91,11 +114,11 @@ export default function ProductDetails({
   return (
     <div className="container mx-auto px-6">
       <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
-        {/* Secțiunea cu imaginea - fundal negru palid, complet refăcută */}
+        {/* Secțiunea cu imaginea - fundal alb */}
         <div className="w-full md:w-1/2 relative">
-          <div className="absolute inset-0 bg-[#1a1a1a] rounded-t-3xl md:rounded-t-none md:rounded-l-3xl"></div>
+          <div className="absolute inset-0 bg-white rounded-t-3xl md:rounded-t-none md:rounded-l-3xl"></div>
           <div className="relative z-10 aspect-square md:aspect-auto md:h-[600px] p-4 md:p-8 flex items-center justify-center">
-            <div className="w-full h-full relative rounded-xl overflow-hidden">
+            <div className="w-full h-full relative rounded-xl">
               <Carousel images={images} />
             </div>
           </div>
@@ -108,9 +131,6 @@ export default function ProductDetails({
               <h1 className="text-4xl md:text-5xl font-bold text-black">
                 {product.name}
               </h1>
-              <p className="text-lg text-gray-600 leading-relaxed">
-                {product.description}
-              </p>
             </div>
 
             {/* Mărimi disponibile */}
@@ -200,6 +220,22 @@ export default function ProductDetails({
               </div>
             )}
 
+            {/* Afirmații în verde */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-green-600 font-medium text-lg">🛡️ 5 ani de garantie</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-green-600 font-medium text-lg">🔄 Auto-regenerare</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-green-600 font-medium text-lg">⭐ Calitate de top</span>
+              </div>
+            </div>
+
             {/* Contor și buton adăugare în coș */}
             <div className="flex items-center gap-4">
               <div className="flex items-center bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
@@ -242,6 +278,75 @@ export default function ProductDetails({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Secțiunea cu descrierea și specificațiile produsului */}
+      <div className="max-w-6xl mx-auto mt-16">
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="description" className="border-2 border-orange-500 rounded-lg mb-4 bg-white">
+            <AccordionTrigger className="px-6 py-4 text-lg font-semibold hover:no-underline">
+              📝 Descrierea produsului
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6">
+              <div className="text-gray-700 leading-relaxed space-y-4">
+                <p className="text-lg">
+                  {product.description}
+                </p>
+                <p className="text-base">
+                  Folia de protecție ScreenShield este proiectată pentru a oferi protecție maximă 
+                  împotriva zgârieturilor, pietrelor și altor elemente care pot deteriora vopseaua mașinii. 
+                  Cu tehnologia noastră avansată de auto-regenerare, folia se repară automat la temperaturi ridicate.
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="specifications" className="border-2 border-orange-500 rounded-lg bg-white">
+            <AccordionTrigger className="px-6 py-4 text-lg font-semibold hover:no-underline">
+              ⚙️ Specificații tehnice
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Grosime</span>
+                    <span className="text-gray-900">200 microni</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Transparență</span>
+                    <span className="text-gray-900">99.9%</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Temperatură minimă</span>
+                    <span className="text-gray-900">-40°C</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Temperatură maximă</span>
+                    <span className="text-gray-900">+80°C</span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Garanție</span>
+                    <span className="text-gray-900">5 ani</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Auto-regenerare</span>
+                    <span className="text-green-600 font-medium">Da</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Rezistență UV</span>
+                    <span className="text-green-600 font-medium">Da</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-medium text-gray-700">Certificări</span>
+                    <span className="text-gray-900">ISO 9001</span>
+                  </div>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       {/* Secțiunea cu video YouTube */}
