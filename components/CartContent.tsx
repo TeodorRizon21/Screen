@@ -248,12 +248,12 @@ export default function CartContent() {
           </div>
           <div className="flex justify-between text-gray-700">
             <span>Transport</span>
-            <span className="text-green-600 font-medium">Gratuit</span>
+            <span>15,00 RON</span>
           </div>
           <div className="flex justify-between text-lg font-bold border-t pt-4">
             <span>Total</span>
             <span>
-              {state.total.toLocaleString("ro-RO", {
+              {(state.total + 15).toLocaleString("ro-RO", {
                 style: "currency",
                 currency: "RON",
               })}

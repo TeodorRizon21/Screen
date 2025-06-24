@@ -20,6 +20,7 @@ model Product {
   allowOutOfStock   Boolean
   lowStockThreshold Int?
   showStockLevel    Boolean
+  weight            Float         @default(1) // Weight in kg
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   OrderItem         OrderItem[]
@@ -40,6 +41,7 @@ model Order {
   paymentType       String
   courier           String?
   awb               String?
+  dpdShipmentId     String? // ID-ul expedierii în sistemul DPD (ex: EE20250624140758431BAODWHPM)
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   items             OrderItem[]

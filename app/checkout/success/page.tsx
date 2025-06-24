@@ -3,7 +3,45 @@ import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import SuccessContent from "@/components/SuccessContent";
 import { sendAdminNotification, sendOrderConfirmation } from "@/lib/email";
-import { Prisma } from '@prisma/client';
+import { Prisma, Order, OrderItem } from "@prisma/client";
+import { createDPDShipmentForOrder } from "@/lib/dpd";
+
+interface OrderProduct {
+  id: string;
+  name: string;
+  price: number;
+  images: string[];
+  weight: number;
+}
+
+interface OrderDetails {
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  street: string;
+  city: string;
+  county: string;
+  postalCode: string;
+  country: string;
+  notes?: string | null;
+  isCompany: boolean;
+  companyName?: string | null;
+  cui?: string | null;
+  regCom?: string | null;
+  companyStreet?: string | null;
+  companyCity?: string | null;
+  companyCounty?: string | null;
+}
+
+interface OrderWithItems extends Order {
+  items: (OrderItem & {
+    product: OrderProduct;
+  })[];
+  details: OrderDetails;
+  discountCodes: Array<{
+    discountCode: any;
+  }>;
+}
 
 export default async function CheckoutSuccessPage({
   searchParams,
@@ -29,7 +67,20 @@ export default async function CheckoutSuccessPage({
           discountCodes: { include: { discountCode: true } },
         },
       });
+
       if (order) {
+        // Dacă comanda există deja, verificăm dacă are AWB
+        // Dacă nu are AWB, încercăm să creăm expedierea DPD
+        if (!order.awb && order.paymentType === "card") {
+          try {
+            order = await createDPDShipmentForOrder(order, order.details);
+          } catch (dpdError: any) {
+            console.error(
+              "Eroare la crearea expedierii DPD în pagina de succes:",
+              dpdError
+            );
+          }
+        }
         return (
           <SuccessContent orderId={order.id} paymentType={order.paymentType} />
         );
@@ -58,92 +109,45 @@ export default async function CheckoutSuccessPage({
       const parsedDiscounts = JSON.parse(appliedDiscounts || "[]");
 
       // Use a transaction to create order and update stock
-      order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Create the order first
-        const newOrder = await tx.order.create({
-          data: {
-            userId,
-            total: session.amount_total! / 100,
-            paymentStatus: "COMPLETED",
-            orderStatus: "Comanda este in curs de procesare",
-            paymentType: "card",
-            details: { connect: { id: detailsId } },
-            items: {
-              create: parsedItems.map((item: any) => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                size: item.size,
-                price: item.price,
-              })),
-            },
-            discountCodes: {
-              create: parsedDiscounts.map((discount: any) => ({
-                discountCode: { connect: { code: discount.code } },
-              })),
-            },
-            checkoutSessionId: sessionId,
-          },
-          include: {
-            items: {
-              include: {
-                product: true,
-              },
-            },
-            details: true,
-            discountCodes: { include: { discountCode: true } },
-          },
-        });
-
-        // Update stock for each item
-        for (const item of parsedItems) {
-          await tx.sizeVariant.updateMany({
-            where: {
-              productId: item.productId,
-              size: item.size,
-            },
+      order = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // Create the order first
+          const newOrder = await tx.order.create({
             data: {
-              stock: {
-                decrement: item.quantity,
+              userId,
+              total: session.amount_total! / 100,
+              paymentStatus: "COMPLETED",
+              orderStatus: "Comanda este in curs de procesare",
+              paymentType: "card",
+              details: { connect: { id: detailsId } },
+              items: {
+                create: parsedItems.map((item: any) => ({
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  size: item.size,
+                  price: item.price,
+                })),
               },
+              discountCodes: {
+                create: parsedDiscounts.map((discount: any) => ({
+                  discountCode: { connect: { code: discount.code } },
+                })),
+              },
+              checkoutSessionId: sessionId,
+            },
+            include: {
+              items: {
+                include: {
+                  product: true,
+                },
+              },
+              details: true,
+              discountCodes: { include: { discountCode: true } },
             },
           });
-        }
 
-        return newOrder;
-      });
-
-      // Send emails only after successful order creation
-      try {
-        await Promise.all([
-          sendAdminNotification(order),
-          sendOrderConfirmation(order),
-        ]);
-      } catch (emailError) {
-        console.error("Error sending emails:", emailError);
-        // Don't throw the error as the order was still created successfully
-      }
-    } else if (orderId) {
-      // For cash on delivery orders
-      order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        const existingOrder = await tx.order.findUnique({
-          where: { id: orderId },
-          include: {
-            items: {
-              include: {
-                product: true,
-              },
-            },
-            details: true,
-          },
-        });
-
-        if (!existingOrder) {
-          throw new Error("Order not found");
-        }
-
-        // Update stock for each item only if it hasn't been updated before
-        if (existingOrder.orderStatus !== "Stock Updated") {
-          for (const item of existingOrder.items) {
+          // Update stock for each item
+          for (const item of parsedItems) {
             await tx.sizeVariant.updateMany({
               where: {
                 productId: item.productId,
@@ -157,26 +161,90 @@ export default async function CheckoutSuccessPage({
             });
           }
 
-          // Update order status to indicate stock has been updated
-          await tx.order.update({
+          return newOrder;
+        }
+      );
+
+      // Send emails only after successful order creation
+      try {
+        await Promise.all([
+          sendAdminNotification(order as OrderWithItems),
+          sendOrderConfirmation(order as OrderWithItems),
+        ]);
+      } catch (emailError) {
+        console.error("Error sending emails:", emailError);
+        // Don't throw the error as the order was still created successfully
+      }
+    } else if (orderId) {
+      // For cash on delivery orders
+      order = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          const existingOrder = (await tx.order.findFirst({
             where: { id: orderId },
-            data: { orderStatus: "Stock Updated" },
-          });
-        }
+            include: {
+              items: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      price: true,
+                      images: true,
+                      weight: true,
+                    },
+                  },
+                },
+              },
+              details: true,
+              discountCodes: {
+                include: {
+                  discountCode: true,
+                },
+              },
+            },
+          })) as OrderWithItems | null;
 
-        // Send emails only after confirming the order exists
-        try {
-          await Promise.all([
-            sendAdminNotification(existingOrder),
-            sendOrderConfirmation(existingOrder),
-          ]);
-        } catch (emailError) {
-          console.error("Error sending emails:", emailError);
-          // Don't throw the error as the order was still created successfully
-        }
+          if (!existingOrder) {
+            throw new Error("Order not found");
+          }
 
-        return existingOrder;
-      });
+          // Update stock for each item only if it hasn't been updated before
+          if (existingOrder.orderStatus !== "Stock Updated") {
+            for (const item of existingOrder.items) {
+              await tx.sizeVariant.updateMany({
+                where: {
+                  productId: item.productId,
+                  size: item.size,
+                },
+                data: {
+                  stock: {
+                    decrement: item.quantity,
+                  },
+                },
+              });
+            }
+
+            // Update order status to indicate stock has been updated
+            await tx.order.update({
+              where: { id: existingOrder.id },
+              data: { orderStatus: "Stock Updated" },
+            });
+          }
+
+          // Send emails only after confirming the order exists
+          try {
+            await Promise.all([
+              sendAdminNotification(existingOrder),
+              sendOrderConfirmation(existingOrder),
+            ]);
+          } catch (emailError) {
+            console.error("Error sending emails:", emailError);
+            // Don't throw the error as the order was still created successfully
+          }
+
+          return existingOrder;
+        }
+      );
     }
 
     if (!order) {
@@ -189,8 +257,15 @@ export default async function CheckoutSuccessPage({
   } catch (error) {
     console.error("Error processing order:", error);
     return (
-      <div>
-        There was an error processing your order. Please contact support.
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">
+            A apărut o eroare la procesarea comenzii
+          </h1>
+          <p className="text-gray-600">
+            Vă rugăm să contactați suportul pentru asistență.
+          </p>
+        </div>
       </div>
     );
   }

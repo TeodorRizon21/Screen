@@ -33,6 +33,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Download } from "lucide-react";
+import DPDTrackingDialog from "./DPDTrackingDialog";
 
 type OrderItem = {
   id: string;
@@ -75,6 +76,46 @@ type Order = {
   }[];
 };
 
+interface OrderCardProps {
+  order: Order;
+  onDelete: (id: string) => void;
+  onFulfill: (id: string) => void;
+  onStatusChange: (id: string, status: string) => void;
+  onDownloadInvoice: (id: string) => void;
+}
+
+function OrderCard({
+  order,
+  onDelete,
+  onFulfill,
+  onStatusChange,
+  onDownloadInvoice,
+}: OrderCardProps) {
+  return (
+    <Card className="mb-4">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <CardTitle>Comanda #{order.id}</CardTitle>
+          <div className="flex gap-2">
+            {order.courier === "DPD" && order.awb && (
+              <DPDTrackingDialog awb={order.awb} />
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownloadInvoice(order.id)}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            {/* ... rest of the buttons ... */}
+          </div>
+        </div>
+      </CardHeader>
+      {/* ... rest of the card content ... */}
+    </Card>
+  );
+}
+
 function ProductCard({ item }: { item: OrderItem }) {
   return (
     <Link href={`/products/${item.productId}`}>
@@ -91,9 +132,13 @@ function ProductCard({ item }: { item: OrderItem }) {
           </div>
           <div>
             <h3 className="font-semibold">{item.productName}</h3>
-            <p className="text-sm text-gray-600">Size: {item.size}</p>
+            <p className="text-sm text-gray-600">Mărime: {item.size}</p>
             <p className="text-sm font-medium">
-              ${item.price.toFixed(2)} x {item.quantity}
+              {item.price.toLocaleString("ro-RO", {
+                style: "currency",
+                currency: "RON",
+              })}{" "}
+              x {item.quantity}
             </p>
           </div>
         </CardContent>
@@ -420,6 +465,35 @@ export default function AdminOrderList() {
     }
   };
 
+  const handleCreateDPDShipment = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/admin/orders/${orderId}/dpd`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create DPD shipment");
+      }
+
+      toast({
+        title: "AWB generat cu succes!",
+        description: `AWB: ${data.awb}`,
+      });
+
+      // Reîncărcăm lista de comenzi pentru a vedea AWB-ul actualizat
+      fetchOrders();
+    } catch (error) {
+      console.error("Error creating DPD shipment:", error);
+      toast({
+        title: "Eroare",
+        description: "Nu s-a putut genera AWB-ul DPD",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return <div>Loading orders...</div>;
   }
@@ -631,7 +705,11 @@ export default function AdminOrderList() {
                             {item.productName}
                           </p>
                           <p className="text-xs text-gray-500">
-                            ${item.price.toFixed(2)} x {item.quantity}
+                            {item.price.toLocaleString("ro-RO", {
+                              style: "currency",
+                              currency: "RON",
+                            })}{" "}
+                            x {item.quantity}
                           </p>
                         </div>
                       </div>
@@ -754,6 +832,14 @@ export default function AdminOrderList() {
                       className="w-full"
                     >
                       Delete
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCreateDPDShipment(order.id)}
+                      disabled={!!order.awb}
+                    >
+                      Generează AWB DPD
                     </Button>
                   </div>
                 </div>

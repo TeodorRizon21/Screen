@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { cancelDPDShipment } from '@/lib/dpd'
 
 export async function DELETE(
   request: Request,
@@ -8,6 +9,9 @@ export async function DELETE(
 ) {
   try {
     const { orderId } = params
+
+    // Anulăm expedierea DPD înainte de a șterge comanda
+    await cancelDPDShipment(orderId);
 
     // Use a transaction to ensure all operations succeed or fail together
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -57,6 +61,11 @@ export async function PUT(
     const { orderId } = params
     const body = await request.json()
     const { courier, awb, orderStatus } = body
+
+    // Dacă se schimbă statusul în anulat, anulăm și expedierea DPD
+    if (orderStatus?.toLowerCase().includes('anulat')) {
+      await cancelDPDShipment(orderId);
+    }
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },

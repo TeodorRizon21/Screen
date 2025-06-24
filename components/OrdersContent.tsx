@@ -144,6 +144,24 @@ export default function OrdersContent({ userId }: { userId: string }) {
     }
   };
 
+  const getTrackingUrl = (courier: string | null, awb: string | null) => {
+    if (!courier || !awb) return null;
+
+    switch (courier) {
+      case "DPD":
+        return `https://tracking.dpd.ro/?shipmentNumber=${awb}`;
+      default:
+        return null;
+    }
+  };
+
+  const handleTrackingClick = (courier: string | null, awb: string | null) => {
+    const url = getTrackingUrl(courier, awb);
+    if (url) {
+      window.open(url, "_blank");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-6 py-12">Loading orders...</div>
@@ -279,7 +297,17 @@ export default function OrdersContent({ userId }: { userId: string }) {
                         {order.awb && (
                           <p className="text-sm">
                             <span className="font-medium">AWB:</span>{" "}
-                            {order.awb}
+                            <button
+                              onClick={() =>
+                                handleTrackingClick(order.courier, order.awb)
+                              }
+                              className="text-gray-800 hover:text-blue-600 transition-colors cursor-pointer underline"
+                            >
+                              {order.awb}
+                            </button>
+                            <span className="text-xs text-gray-500 ml-2">
+                              (click pentru urmărire)
+                            </span>
                           </p>
                         )}
                       </div>
