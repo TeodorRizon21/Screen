@@ -101,7 +101,7 @@ export async function GET(
           createElement(View, { style: styles.header },
             createElement(Text, { style: [styles.title, styles.bold] }, "Factura"),
             createElement(Text, {}, `Data: ${currentDate}`),
-            createElement(Text, {}, `Numar comanda: ${order.id}`)
+            createElement(Text, {}, `Numar comanda: ${order.orderNumber}`)
           ),
           order.details.isCompany && [
             createElement(View, { style: styles.section },

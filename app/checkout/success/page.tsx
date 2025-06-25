@@ -5,6 +5,7 @@ import SuccessContent from "@/components/SuccessContent";
 import { sendAdminNotification, sendOrderConfirmation } from "@/lib/email";
 import { Prisma, Order, OrderItem } from "@prisma/client";
 import { createDPDShipmentForOrder } from "@/lib/dpd";
+import { generateOrderNumber } from "@/lib/orderNumber";
 
 interface OrderProduct {
   id: string;
@@ -69,18 +70,7 @@ export default async function CheckoutSuccessPage({
       });
 
       if (order) {
-        // Dacă comanda există deja, verificăm dacă are AWB
-        // Dacă nu are AWB, încercăm să creăm expedierea DPD
-        if (!order.awb && order.paymentType === "card") {
-          try {
-            order = await createDPDShipmentForOrder(order, order.details);
-          } catch (dpdError: any) {
-            console.error(
-              "Eroare la crearea expedierii DPD în pagina de succes:",
-              dpdError
-            );
-          }
-        }
+        // Dacă comanda există deja, o afișăm direct
         return (
           <SuccessContent orderId={order.id} paymentType={order.paymentType} />
         );
@@ -111,9 +101,13 @@ export default async function CheckoutSuccessPage({
       // Use a transaction to create order and update stock
       order = await prisma.$transaction(
         async (tx: Prisma.TransactionClient) => {
+          // Generate order number
+          const orderNumber = await generateOrderNumber();
+
           // Create the order first
           const newOrder = await tx.order.create({
             data: {
+              orderNumber,
               userId,
               total: session.amount_total! / 100,
               paymentStatus: "COMPLETED",
@@ -164,6 +158,32 @@ export default async function CheckoutSuccessPage({
           return newOrder;
         }
       );
+
+      // După ce comanda a fost creată cu succes și stocul a fost actualizat,
+      // creăm imediat expedierea DPD pentru că știm că plata este confirmată
+      try {
+        console.log(
+          "Creăm expedierea DPD pentru comanda cu plată card:",
+          order.id
+        );
+        const orderWithDPD = await createDPDShipmentForOrder(
+          order,
+          order.details
+        );
+        if (orderWithDPD) {
+          order = orderWithDPD;
+          console.log(
+            "✅ Expediere DPD creată cu succes pentru comanda cu card:",
+            orderWithDPD.id
+          );
+        }
+      } catch (dpdError) {
+        console.error(
+          "❌ Eroare la crearea expedierii DPD pentru comanda cu card:",
+          dpdError
+        );
+        // Nu aruncăm eroarea mai departe pentru a nu întrerupe fluxul comenzii
+      }
 
       // Send emails only after successful order creation
       try {
@@ -224,11 +244,32 @@ export default async function CheckoutSuccessPage({
               });
             }
 
-            // Update order status to indicate stock has been updated
-            await tx.order.update({
+            // Actualizăm statusul comenzii și creăm expedierea DPD
+            const updatedOrder = await tx.order.update({
               where: { id: existingOrder.id },
-              data: { orderStatus: "Stock Updated" },
+              data: {
+                orderStatus: "În așteptare",
+              },
             });
+
+            // După ce am actualizat stocul, încercăm să creăm expedierea DPD
+            try {
+              const orderWithDPD = await createDPDShipmentForOrder(
+                updatedOrder,
+                existingOrder.details
+              );
+              if (orderWithDPD) {
+                console.log(
+                  "✅ Expediere DPD creată cu succes pentru comanda ramburs:",
+                  orderWithDPD.id
+                );
+              }
+            } catch (dpdError) {
+              console.error(
+                "❌ Eroare la crearea expedierii DPD pentru comanda ramburs:",
+                dpdError
+              );
+            }
           }
 
           // Send emails only after confirming the order exists

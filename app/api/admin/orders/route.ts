@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import type { Order, OrderItem, Product, OrderDetails, DiscountCode, OrderDiscountCode } from '@prisma/client'
+import { generateOrderNumber } from '@/lib/orderNumber'
 
 interface OrderItemWithProduct extends OrderItem {
   product: Product
@@ -37,6 +38,7 @@ export async function GET() {
 
     const formattedOrders = orders.map((order: CompleteOrder) => ({
       id: order.id,
+      orderNumber: order.orderNumber,
       createdAt: order.createdAt.toISOString(),
       total: order.total,
       paymentStatus: order.paymentStatus,
@@ -84,8 +86,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { userId, total, items, details, paymentType, discountCodes } = body
 
+    const orderNumber = await generateOrderNumber()
+
     const order = await prisma.order.create({
       data: {
+        orderNumber,
         userId,
         total,
         paymentStatus: paymentType === 'card' ? 'COMPLETED' : 'PENDING',

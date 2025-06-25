@@ -204,6 +204,7 @@ interface DPDTrackingRequest {
 interface DPDTrackingOperation {
   date: string;
   status: string;
+  operationCode: string;
   description: string;
   terminal: string;
   terminalId: number;
@@ -322,10 +323,14 @@ class DPDClient {
 
   async trackParcels(parcelIds: string[], lastOperationOnly: boolean = false): Promise<DPDTrackingResponse> {
     const parcels = parcelIds.map(id => ({ id }));
-    return this.makeRequest<DPDTrackingResponse>('/track/', {
+    const trackingRequest: DPDTrackingRequest = {
+      userName: this.config.username,
+      password: this.config.password,
+      language: 'RO',
       parcels,
       lastOperationOnly
-    });
+    };
+    return this.makeRequest<DPDTrackingResponse>('/track/', trackingRequest);
   }
 }
 
@@ -502,13 +507,12 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
     console.log('Expediere creată cu succes în DPD. Actualizăm comanda cu AWB:', dpdResponse.parcels[0].id);
 
     // Actualizăm comanda cu AWB-ul primit
-    const updatedOrder = await prisma.order.update({
+    let updatedOrder = await prisma.order.update({
       where: { id: order.id },
       data: {
         courier: 'DPD',
         awb: dpdResponse.parcels[0].id,
         dpdShipmentId: dpdResponse.id,
-        orderStatus: 'Comanda a fost preluată de curier',
       },
       include: {
         items: {
@@ -532,6 +536,51 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
         }
       }
     });
+
+    // Facem tracking imediat pentru a obține statusul inițial
+    try {
+      console.log('Obținem statusul inițial de la DPD pentru AWB:', dpdResponse.parcels[0].id);
+      const trackingResponse = await dpdClient.trackParcels([dpdResponse.parcels[0].id], false);
+      
+      if (trackingResponse.parcels?.[0]?.operations?.length > 0) {
+        const lastOperation = trackingResponse.parcels[0].operations[trackingResponse.parcels[0].operations.length - 1];
+        if (lastOperation?.status) {
+          console.log('Status inițial primit de la DPD:', lastOperation.status);
+          updatedOrder = await prisma.order.update({
+            where: { id: order.id },
+            data: { 
+              orderStatus: lastOperation.status,
+              dpdOperationCode: lastOperation.operationCode
+            },
+            include: {
+              items: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      price: true,
+                      images: true,
+                      weight: true
+                    }
+                  }
+                }
+              },
+              details: true,
+              discountCodes: {
+                include: {
+                  discountCode: true
+                }
+              }
+            }
+          });
+          console.log(`✅ Status actualizat pentru comanda ${order.id}: ${lastOperation.status} (${lastOperation.operationCode})`);
+        }
+      }
+    } catch (trackingError) {
+      console.error('Eroare la obținerea statusului inițial DPD:', trackingError);
+      // Nu aruncăm eroarea mai departe, deoarece expedierea a fost creată cu succes
+    }
 
     console.log('Comanda actualizată cu succes');
     return updatedOrder;

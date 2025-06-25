@@ -6,9 +6,12 @@ import { useCart } from "@/contexts/cart-context";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import DPDTrackingDialog from "./DPDTrackingDialog";
 
 interface OrderDetails {
   id: string;
+  orderNumber: string;
   courier: string | null;
   awb: string | null;
   paymentType: string;
@@ -52,7 +55,7 @@ export default function SuccessContent({
 
     switch (orderDetails.courier) {
       case "DPD":
-        return `https://tracking.dpd.ro/?shipmentNumber=${orderDetails.awb}`;
+        return null;
       default:
         return null;
     }
@@ -80,9 +83,11 @@ export default function SuccessContent({
           <div className="mt-6 mb-8 w-full">
             <div className="border-t border-gray-100 py-4">
               <p className="text-gray-600">
-                Comanda ta (ID:{" "}
-                <span className="font-medium text-gray-800">{orderId}</span>) a
-                fost plasată cu succes.
+                Comanda ta (
+                <span className="font-medium text-gray-800">
+                  {orderDetails?.orderNumber}
+                </span>
+                ) a fost plasată cu succes.
               </p>
             </div>
 
@@ -101,18 +106,22 @@ export default function SuccessContent({
               </div>
             ) : orderDetails?.awb ? (
               <div className="border-t border-gray-100 py-4">
-                <p className="text-gray-600">
-                  AWB:{" "}
-                  <button
-                    onClick={handleTrackingClick}
-                    className="font-medium text-gray-800 hover:text-blue-600 transition-colors cursor-pointer underline"
-                  >
-                    {orderDetails.awb}
-                  </button>
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Click pe AWB pentru urmărire
-                </p>
+                {orderDetails.courier && orderDetails.awb && (
+                  <div className="mt-4">
+                    <p className="text-sm mb-2">Urmărește comanda ta:</p>
+                    {orderDetails.courier === "DPD" ? (
+                      <DPDTrackingDialog awb={orderDetails.awb} />
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTrackingClick}
+                      >
+                        Urmărește AWB
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : null}
 

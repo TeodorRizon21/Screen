@@ -12,6 +12,7 @@ export async function GET(
       where: { id: orderId },
       select: {
         id: true,
+        orderNumber: true,
         total: true,
         paymentStatus: true,
         orderStatus: true,

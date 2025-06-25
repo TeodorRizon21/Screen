@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { dpdClient } from '@/lib/dpd';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
@@ -26,6 +27,41 @@ export async function POST(request: Request) {
     const response = await dpdClient.trackParcels(parcelIds, lastOperationOnly);
     
     console.log('✅ Răspuns tracking DPD:', response);
+
+    // Actualizăm statusul comenzii pentru fiecare AWB
+    for (const parcel of response.parcels) {
+      if (parcel?.operations?.length > 0) {
+        // Luăm ultima operațiune (cea mai recentă)
+        const lastOperation = parcel.operations[parcel.operations.length - 1];
+        
+        // Verificăm dacă avem un status valid
+        if (lastOperation?.status) {
+          // Găsim comanda după AWB și o actualizăm
+          const order = await prisma.order.findFirst({
+            where: { awb: parcel.id }
+          });
+
+          if (order) {
+            await prisma.order.update({
+              where: { id: order.id },
+              data: { 
+                orderStatus: lastOperation.operationCode === '-14' ? 'FINALIZATA' : lastOperation.status,
+                dpdOperationCode: lastOperation.operationCode
+              }
+            });
+            console.log(
+              `✅ Status actualizat pentru comanda ${order.id}: ${
+                lastOperation.operationCode === '-14' ? 'FINALIZATA' : lastOperation.status
+              } (${lastOperation.operationCode})`
+            );
+          }
+        } else {
+          console.log(`⚠️ Nu am găsit status valid pentru AWB ${parcel.id}`);
+        }
+      } else {
+        console.log(`⚠️ Nu am găsit operațiuni pentru AWB ${parcel.id}`);
+      }
+    }
     
     return NextResponse.json(response);
   } catch (error) {
@@ -38,4 +74,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

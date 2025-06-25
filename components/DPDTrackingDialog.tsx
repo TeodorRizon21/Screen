@@ -8,11 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 
 interface DPDOperation {
   date: string;
   status: string;
+  operationCode: string;
   description: string;
   terminal: string;
   terminalId: number;
@@ -68,10 +69,14 @@ export default function DPDTrackingDialog({ awb }: DPDTrackingDialogProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("ro-RO", {
+    return new Date().toLocaleString("ro-RO", {
       dateStyle: "medium",
       timeStyle: "short",
     });
+  };
+
+  const getDPDTrackingUrl = () => {
+    return `https://tracking.dpd.ro/?shipmentNumber=${awb}`;
   };
 
   return (
@@ -91,7 +96,9 @@ export default function DPDTrackingDialog({ awb }: DPDTrackingDialogProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Tracking AWB: {awb}</DialogTitle>
+          <DialogTitle>
+            <span>Tracking AWB: {awb}</span>
+          </DialogTitle>
         </DialogHeader>
         <div className="mt-4">
           {isLoading ? (
@@ -105,20 +112,32 @@ export default function DPDTrackingDialog({ awb }: DPDTrackingDialogProps) {
                   key={index}
                   className="border rounded-lg p-4 bg-white shadow-sm"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="font-medium">{op.status}</div>
-                    <div className="text-sm text-gray-500">
-                      {formatDate(op.date)}
+                  <div className="flex flex-col gap-1">
+                    <div className="font-medium">
+                      {op.status}
+                      <span className="ml-2 text-sm text-gray-500">
+                        ({op.operationCode})
+                      </span>
                     </div>
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    {op.description}
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Terminal: {op.terminal}
+                    <div className="text-sm text-gray-600">
+                      {op.description}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Ultimul status la data de {formatDate("")}
+                    </div>
                   </div>
                 </div>
               ))}
+              <div className="flex justify-center mt-6">
+                <a
+                  href={getDPDTrackingUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-blue-600 hover:text-blue-800 border border-blue-600 hover:border-blue-800 px-4 py-2 rounded-md transition-colors"
+                >
+                  Vezi pe DPD <ExternalLink size={16} />
+                </a>
+              </div>
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
