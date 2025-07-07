@@ -11,6 +11,7 @@ interface OrderDiscountCodeWithDetails extends OrderDiscountCode {
 }
 
 interface CompleteOrder extends Order {
+  orderNumber: string;
   items: OrderItemWithProduct[]
   details: OrderDetails
   discountCodes: OrderDiscountCodeWithDetails[]
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
 
     const formattedOrders = orders.map((order: CompleteOrder) => ({
       id: order.id,
+      orderNumber: order.orderNumber,
       createdAt: order.createdAt.toISOString(),
       total: order.total,
       paymentStatus: order.paymentStatus,

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/accordion";
 import { Download } from "lucide-react";
 import ReviewModal from "@/components/ReviewModal";
+import DPDTrackingDialog from "./DPDTrackingDialog";
 
 type OrderItem = {
   id: string;
@@ -39,6 +40,7 @@ type OrderDetails = {
 
 type Order = {
   id: string;
+  orderNumber: string;
   createdAt: string;
   total: number;
   items: OrderItem[];
@@ -48,6 +50,7 @@ type Order = {
   courier: string | null;
   awb: string | null;
   details: OrderDetails;
+  dpdStatus?: string;
   discountCodes: {
     code: string;
     type: string;
@@ -73,7 +76,11 @@ function ProductCard({ item }: { item: OrderItem }) {
             <h3 className="font-semibold">{item.productName}</h3>
             <p className="text-sm text-gray-600">Size: {item.size}</p>
             <p className="text-sm font-medium">
-              ${item.price.toFixed(2)} x {item.quantity}
+              {item.price.toLocaleString("ro-RO", {
+                style: "currency",
+                currency: "RON",
+              })}{" "}
+              x {item.quantity}
             </p>
           </div>
         </CardContent>
@@ -92,6 +99,34 @@ export default function OrdersContent({ userId }: { userId: string }) {
     productName: string;
   } | null>(null);
 
+  const fetchDPDStatus = async (awb: string) => {
+    try {
+      const response = await fetch("/api/admin/dpd/track", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          parcelIds: [awb],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch tracking info");
+      }
+
+      const data = await response.json();
+      if (data.parcels?.[0]?.operations?.length > 0) {
+        const operations = data.parcels[0].operations;
+        return operations[operations.length - 1].description;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching DPD status:", error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     async function fetchOrders() {
       try {
@@ -100,7 +135,19 @@ export default function OrdersContent({ userId }: { userId: string }) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setOrders(data);
+
+        // Fetch DPD status for each order with DPD courier and AWB
+        const ordersWithDPDStatus = await Promise.all(
+          data.map(async (order: Order) => {
+            if (order.courier === "DPD" && order.awb) {
+              const dpdStatus = await fetchDPDStatus(order.awb);
+              return { ...order, dpdStatus };
+            }
+            return order;
+          })
+        );
+
+        setOrders(ordersWithDPDStatus);
       } catch (error) {
         console.error("Error fetching orders:", error);
         setError("Failed to fetch orders. Please try again later.");
@@ -141,6 +188,24 @@ export default function OrdersContent({ userId }: { userId: string }) {
           "Nu am putut descărca factura. Vă rugăm să încercați din nou.",
         variant: "destructive",
       });
+    }
+  };
+
+  const getTrackingUrl = (courier: string | null, awb: string | null) => {
+    if (!courier || !awb) return null;
+
+    switch (courier) {
+      case "DPD":
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleTrackingClick = (courier: string | null, awb: string | null) => {
+    const url = getTrackingUrl(courier, awb);
+    if (url) {
+      window.open(url, "_blank");
     }
   };
 
@@ -198,7 +263,7 @@ export default function OrdersContent({ userId }: { userId: string }) {
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <div className="flex flex-col">
                       <h2 className="text-lg font-semibold">
-                        Comanda #{order.id}
+                        Comanda #{order.orderNumber}
                       </h2>
                       <p className="text-sm text-gray-600">
                         {new Date(order.createdAt).toLocaleDateString()}
@@ -216,26 +281,20 @@ export default function OrdersContent({ userId }: { userId: string }) {
                           ? "Plătit"
                           : "În așteptare"}
                       </span>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.orderStatus === "Comanda finalizata!"
-                            ? "bg-green-100 text-green-800"
-                            : order.orderStatus === "Comanda expediata!"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {order.orderStatus === "Comanda finalizata!"
-                          ? "Livrat"
-                          : order.orderStatus === "Comanda expediata!"
-                          ? "În livrare"
-                          : "În procesare"}
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        Status comandă:{" "}
+                        {order.courier === "DPD" && order.dpdStatus
+                          ? order.dpdStatus
+                          : order.orderStatus}
                       </span>
                     </div>
                   </div>
                   <div className="flex flex-col sm:items-end">
                     <p className="text-lg font-semibold">
-                      ${order.total.toFixed(2)}
+                      {order.total.toLocaleString("ro-RO", {
+                        style: "currency",
+                        currency: "RON",
+                      })}
                     </p>
                     <p className="text-sm text-gray-600">
                       {order.items.length}{" "}
@@ -258,11 +317,7 @@ export default function OrdersContent({ userId }: { userId: string }) {
                         </p>
                         <p className="text-sm">
                           <span className="font-medium">Status Comandă:</span>{" "}
-                          {order.orderStatus === "Comanda finalizata!"
-                            ? "Livrat"
-                            : order.orderStatus === "Comanda expediata!"
-                            ? "În livrare"
-                            : "În procesare"}
+                          {order.dpdStatus}
                         </p>
                         <p className="text-sm">
                           <span className="font-medium">Metodă Plată:</span>{" "}
@@ -277,10 +332,21 @@ export default function OrdersContent({ userId }: { userId: string }) {
                           </p>
                         )}
                         {order.awb && (
-                          <p className="text-sm">
-                            <span className="font-medium">AWB:</span>{" "}
-                            {order.awb}
-                          </p>
+                          <div className="mt-2">
+                            {order.courier === "DPD" ? (
+                              <DPDTrackingDialog awb={order.awb} />
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleTrackingClick(order.courier, order.awb)
+                                }
+                              >
+                                Urmărește AWB
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -348,10 +414,20 @@ export default function OrdersContent({ userId }: { userId: string }) {
                                 Mărime: {item.size}
                               </p>
                               <p className="text-sm text-gray-600">
-                                {item.quantity} x ${item.price.toFixed(2)}
+                                {item.quantity} x{" "}
+                                {item.price.toLocaleString("ro-RO", {
+                                  style: "currency",
+                                  currency: "RON",
+                                })}
                               </p>
                               <p className="font-medium mt-1">
-                                ${(item.quantity * item.price).toFixed(2)}
+                                {(item.quantity * item.price).toLocaleString(
+                                  "ro-RO",
+                                  {
+                                    style: "currency",
+                                    currency: "RON",
+                                  }
+                                )}
                               </p>
                             </div>
                           </div>

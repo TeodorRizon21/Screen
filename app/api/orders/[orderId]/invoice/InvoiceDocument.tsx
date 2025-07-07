@@ -63,14 +63,14 @@ interface InvoiceDocumentProps {
 
 export const InvoiceDocument = ({ order }: InvoiceDocumentProps) => {
   const formattedDate = format(new Date(), "dd.MM.yyyy");
-  
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Text style={[styles.title, styles.bold]}>Factura</Text>
           <Text>Data: {formattedDate}</Text>
-          <Text>Numar comanda: {order.id}</Text>
+          <Text>Numar comanda: {order.orderNumber}</Text>
         </View>
 
         {order.details.isCompany && (

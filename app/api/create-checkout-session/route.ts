@@ -43,6 +43,19 @@ export async function POST(req: Request) {
       console.log('No userId provided - proceeding as guest checkout');
     }
 
+    // Fetch order details
+    const orderDetails = await prisma.orderDetails.findUnique({
+      where: { id: detailsId }
+    });
+
+    if (!orderDetails) {
+      console.log('Error: Order details not found');
+      return NextResponse.json(
+        { error: 'Detaliile comenzii nu au fost găsite' },
+        { status: 400 }
+      );
+    }
+
     // Verify products and calculate total
     console.log('Verifying products and calculating total...');
     let subtotal = 0;
@@ -157,7 +170,25 @@ export async function POST(req: Request) {
           size: item.selectedSize,
           price: item.variant.price
         }))),
-        appliedDiscounts: JSON.stringify(appliedDiscounts || [])
+        appliedDiscounts: JSON.stringify(appliedDiscounts || []),
+        // Add order details for DPD
+        orderDetails: JSON.stringify({
+          fullName: orderDetails.fullName,
+          email: orderDetails.email,
+          phoneNumber: orderDetails.phoneNumber,
+          street: orderDetails.street,
+          city: orderDetails.city,
+          county: orderDetails.county,
+          postalCode: orderDetails.postalCode,
+          country: orderDetails.country,
+          isCompany: orderDetails.isCompany,
+          companyName: orderDetails.companyName,
+          cui: orderDetails.cui,
+          regCom: orderDetails.regCom,
+          companyStreet: orderDetails.companyStreet,
+          companyCity: orderDetails.companyCity,
+          companyCounty: orderDetails.companyCounty
+        })
       },
     });
 

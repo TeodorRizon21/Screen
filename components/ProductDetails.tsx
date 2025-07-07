@@ -169,7 +169,10 @@ export default function ProductDetails({
                     <div className="space-y-2">
                       <div className="flex items-baseline gap-3">
                         <p className="text-4xl md:text-5xl font-bold text-red-600">
-                          {selectedVariant.price.toFixed(2)} lei
+                          {selectedVariant.price.toLocaleString("ro-RO", {
+                            style: "currency",
+                            currency: "RON",
+                          })}
                         </p>
                         <span className="px-3 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium">
                           -
@@ -184,20 +187,28 @@ export default function ProductDetails({
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="text-lg text-gray-500 line-through">
-                          {selectedVariant.oldPrice.toFixed(2)} lei
+                          {selectedVariant.oldPrice.toLocaleString("ro-RO", {
+                            style: "currency",
+                            currency: "RON",
+                          })}
                         </p>
                         <p className="text-sm text-green-600">
                           Economisești{" "}
                           {(
                             selectedVariant.oldPrice - selectedVariant.price
-                          ).toFixed(2)}{" "}
-                          lei
+                          ).toLocaleString("ro-RO", {
+                            style: "currency",
+                            currency: "RON",
+                          })}
                         </p>
                       </div>
                     </div>
                   ) : (
                     <p className="text-4xl md:text-5xl font-bold text-black">
-                      {selectedVariant.price.toFixed(2)} lei
+                      {selectedVariant.price.toLocaleString("ro-RO", {
+                        style: "currency",
+                        currency: "RON",
+                      })}
                     </p>
                   )}
                 </>

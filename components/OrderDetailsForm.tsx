@@ -27,6 +27,7 @@ import { X } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductWithVariants, SizeVariant } from "@/lib/types";
+import { useShippingPrice } from "@/hooks/useCart";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -105,6 +106,14 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
   const [isCompany, setIsCompany] = useState(false);
+  const {
+    shippingPrice,
+    isLoading: isLoadingShipping,
+    error: shippingError,
+    calculateShipping,
+    currency,
+    vat,
+  } = useShippingPrice();
 
   const { appliedDiscounts = [] } = state;
 
@@ -298,11 +307,47 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
     }
   }
 
+  // Greutate fixă de 1kg pentru toate comenzile
+  const totalWeight = 1;
+
+  console.log("📦 Cart total weight:", totalWeight);
+
+  // Recalculăm prețul de transport doar când se completează codul poștal
+  useEffect(() => {
+    const city = form.watch("city");
+    const county = form.watch("county");
+    const postalCode = form.watch("postalCode");
+
+    console.log("🏠 Address field changed - postalCode:", postalCode);
+
+    // Verificăm dacă avem toate datele necesare și dacă codul poștal are lungimea corectă
+    if (city && county && postalCode?.length >= 6) {
+      console.log(
+        "🚚 Triggering shipping calculation after postal code completion"
+      );
+      calculateShipping({
+        city,
+        county,
+        postalCode,
+        totalWeight,
+      });
+    }
+  }, [form.watch("postalCode")]); // Urmărim doar schimbările la codul poștal
+
   const subtotal = state.items.reduce(
     (acc, item) => acc + item.variant.price * item.quantity,
     0
   );
-  const shipping = 15; // Fixed shipping cost
+
+  // Înlocuim valoarea fixă cu prețul calculat
+  const shipping = shippingPrice;
+  console.log("💰 Current shipping details:", {
+    price: shipping,
+    currency,
+    vat,
+    isLoading: isLoadingShipping,
+    error: shippingError,
+  });
 
   // Calculate discounts and adjusted costs
   const percentageDiscount = appliedDiscounts
@@ -327,6 +372,19 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
   );
   const adjustedShipping = hasShippingDiscount ? 0 : shipping;
   const total = adjustedSubtotal + adjustedShipping;
+
+  const renderShippingPrice = () => {
+    if (hasShippingDiscount) {
+      return (
+        <>
+          <span className="line-through text-gray-500">15,00 RON</span>
+          <div className="text-green-600">0,00 RON</div>
+        </>
+      );
+    }
+
+    return <span>15,00 RON</span>;
+  };
 
   return (
     <div className="grid md:grid-cols-2 gap-8 max-w-7xl mx-auto">
@@ -569,6 +627,17 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                   </FormItem>
                 )}
               />
+              {isLoadingShipping && (
+                <div className="text-sm text-gray-500">
+                  Se calculează costul de transport...
+                </div>
+              )}
+              {shippingError && (
+                <div className="text-sm text-red-500">
+                  Nu s-a putut calcula costul de transport. Se va folosi prețul
+                  standard.
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -726,7 +795,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     Size: {item.selectedSize}
                   </p>
                   <p className="text-sm font-medium">
-                    {item.variant.price.toFixed(2)} RON x {item.quantity}
+                    {item.variant.price.toLocaleString("ro-RO", {
+                      style: "currency",
+                      currency: "RON",
+                    })}{" "}
+                    x {item.quantity}
                   </p>
                 </div>
               </div>
@@ -766,7 +839,10 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     ? "Transport gratuit"
                     : discount.type === "percentage"
                     ? `-${discount.value}%`
-                    : `-${discount.value.toFixed(2)} RON`}
+                    : `-${discount.value.toLocaleString("ro-RO", {
+                        style: "currency",
+                        currency: "RON",
+                      })}`}
                 </span>
                 <Button
                   variant="ghost"
@@ -794,37 +870,71 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                       : ""
                   }
                 >
-                  ${subtotal.toFixed(2)}
+                  {subtotal.toLocaleString("ro-RO", {
+                    style: "currency",
+                    currency: "RON",
+                  })}
                 </span>
                 {(percentageDiscount > 0 || fixedDiscount > 0) && (
                   <div className="text-green-600">
-                    ${adjustedSubtotal.toFixed(2)}
+                    {adjustedSubtotal.toLocaleString("ro-RO", {
+                      style: "currency",
+                      currency: "RON",
+                    })}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm items-start">
               <span>Transport</span>
-              <div className="text-right">
-                <span
-                  className={
-                    hasShippingDiscount ? "line-through text-gray-500" : ""
-                  }
-                >
-                  ${shipping.toFixed(2)}
-                </span>
-                {hasShippingDiscount && (
-                  <div className="text-green-600">$0.00</div>
-                )}
-              </div>
+              <div>{renderShippingPrice()}</div>
             </div>
 
-            <Separator className="my-2" />
+            {appliedDiscounts.map((discount: Discount, index: number) => (
+              <div
+                key={index}
+                className="flex justify-between text-green-600 text-sm"
+              >
+                <span>
+                  Reducere{" "}
+                  {discount.type === "percentage"
+                    ? `${discount.value}%`
+                    : discount.type === "fixed"
+                    ? discount.value.toLocaleString("ro-RO", {
+                        style: "currency",
+                        currency: "RON",
+                      })
+                    : "transport gratuit"}
+                </span>
+                <span>
+                  -
+                  {discount.type === "percentage"
+                    ? (subtotal * (discount.value / 100)).toLocaleString(
+                        "ro-RO",
+                        {
+                          style: "currency",
+                          currency: "RON",
+                        }
+                      )
+                    : discount.type === "fixed"
+                    ? discount.value.toLocaleString("ro-RO", {
+                        style: "currency",
+                        currency: "RON",
+                      })
+                    : "15,00 RON"}
+                </span>
+              </div>
+            ))}
 
-            <div className="flex justify-between font-semibold">
+            <div className="flex justify-between font-medium text-base pt-2 border-t">
               <span>Total</span>
-              <span>${total.toFixed(2)}</span>
+              <span>
+                {total.toLocaleString("ro-RO", {
+                  style: "currency",
+                  currency: "RON",
+                })}
+              </span>
             </div>
           </div>
         </div>

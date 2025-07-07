@@ -55,6 +55,7 @@ interface OrderProduct {
 }
 
 interface OrderWithItems {
+  orderNumber: any;
   id: string;
   userId: string | null;
   total: number;
@@ -180,9 +181,9 @@ export async function sendEmail(
       attachments,
     });
 
-    if ('error' in data && data.error) {
+    if ("error" in data && data.error) {
       console.error("Error sending email:", data.error);
-      return { success: false, error: data.error.message || 'Unknown error' };
+      return { success: false, error: data.error.message || "Unknown error" };
     }
 
     console.log("Email sent successfully:", data);
@@ -190,7 +191,7 @@ export async function sendEmail(
   } catch (error: unknown) {
     console.error("Error sending email:", error);
     // Check for specific error types
-    if (error && typeof error === 'object' && 'statusCode' in error) {
+    if (error && typeof error === "object" && "statusCode" in error) {
       const resendError = error as ResendError;
       if (resendError.statusCode === 403) {
         console.error(
@@ -204,12 +205,14 @@ export async function sendEmail(
     }
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
 
-export async function sendAdminNotification(order: OrderWithItems): Promise<EmailResponse> {
+export async function sendAdminNotification(
+  order: OrderWithItems
+): Promise<EmailResponse> {
   try {
     // Fetch the complete order with product information
     const completeOrder = await prisma.order.findUnique({
@@ -217,11 +220,11 @@ export async function sendAdminNotification(order: OrderWithItems): Promise<Emai
       include: {
         items: {
           include: {
-            product: true
-          }
+            product: true,
+          },
         },
-        details: true
-      }
+        details: true,
+      },
     });
 
     if (!completeOrder) {
@@ -282,14 +285,16 @@ export async function sendAdminNotification(order: OrderWithItems): Promise<Emai
     };
   } catch (error) {
     console.error("Error sending admin notifications:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
 
-export async function sendOrderConfirmation(order: OrderWithItems): Promise<EmailResponse> {
+export async function sendOrderConfirmation(
+  order: OrderWithItems
+): Promise<EmailResponse> {
   if (!order.details?.email) {
     console.error("No customer email provided");
     return { success: false, error: "No customer email provided" };
@@ -299,70 +304,174 @@ export async function sendOrderConfirmation(order: OrderWithItems): Promise<Emai
     const currentDate = format(new Date(), "dd/MM/yyyy");
 
     const pdfBuffer = await renderToBuffer(
-      createElement(Document, {}, 
-        createElement(Page, { size: "A4", style: styles.page },
-          createElement(View, { style: styles.header },
-            createElement(Text, { style: [styles.title, styles.bold] }, "Factura"),
+      createElement(
+        Document,
+        {},
+        createElement(
+          Page,
+          { size: "A4", style: styles.page },
+          createElement(
+            View,
+            { style: styles.header },
+            createElement(
+              Text,
+              { style: [styles.title, styles.bold] },
+              "Factura"
+            ),
             createElement(Text, {}, `Data: ${currentDate}`),
-            createElement(Text, {}, `Numar comanda: ${order.id}`)
+            createElement(Text, {}, `Numar comanda: ${order.orderNumber}`)
           ),
           order.details.isCompany && [
-            createElement(View, { style: styles.section },
-              createElement(Text, { style: styles.sectionTitle }, "Date furnizor:"),
+            createElement(
+              View,
+              { style: styles.section },
+              createElement(
+                Text,
+                { style: styles.sectionTitle },
+                "Date furnizor:"
+              ),
               createElement(Text, {}, "ScreenShield SRL"),
               createElement(Text, {}, "CUI: RO12345678"),
               createElement(Text, {}, "Reg. Com.: J40/123/2023"),
               createElement(Text, {}, "Adresa: Strada Exemplu, Nr. 123"),
               createElement(Text, {}, "Oras, Judet, Cod Postal")
             ),
-            createElement(View, { style: styles.section },
-              createElement(Text, { style: styles.sectionTitle }, "Date cumparator:"),
+            createElement(
+              View,
+              { style: styles.section },
+              createElement(
+                Text,
+                { style: styles.sectionTitle },
+                "Date cumparator:"
+              ),
               createElement(Text, {}, order.details.companyName ?? "N/A"),
               createElement(Text, {}, `CUI: ${order.details.cui ?? "N/A"}`),
-              createElement(Text, {}, `Reg. Com.: ${order.details.regCom ?? "N/A"}`),
-              createElement(Text, {}, `Adresa sediului social: ${order.details.companyStreet ?? "N/A"}`),
-              createElement(Text, {}, `${order.details.companyCity ?? "N/A"}, ${order.details.companyCounty ?? "N/A"}`)
-            )
-          ],
-          createElement(View, { style: styles.section },
-            createElement(Text, { style: styles.sectionTitle }, "Date livrare:"),
-            ...(order.details.isCompany ? [
-              createElement(Text, {}, `Adresa: ${order.details.street}`),
-              createElement(Text, {}, `${order.details.city}, ${order.details.county} ${order.details.postalCode}`),
-              createElement(Text, {}, order.details.country)
-            ] : [
-              createElement(Text, {}, order.details.fullName),
-              createElement(Text, {}, order.details.email),
-              createElement(Text, {}, order.details.phoneNumber),
-              createElement(Text, {}, order.details.street),
-              createElement(Text, {}, `${order.details.city}, ${order.details.county} ${order.details.postalCode}`),
-              createElement(Text, {}, order.details.country)
-            ])
-          ),
-          createElement(View, { style: styles.section },
-            createElement(View, { style: styles.row },
-              createElement(Text, { style: [styles.description, styles.bold] }, "Produs"),
-              createElement(Text, { style: [styles.quantity, styles.bold] }, "Cant."),
-              createElement(Text, { style: [styles.price, styles.bold] }, "Pret"),
-              createElement(Text, { style: [styles.amount, styles.bold] }, "Total")
-            ),
-            ...order.items.map((item) =>
-              createElement(View, { key: item.id, style: styles.row },
-                createElement(Text, { style: styles.description }, `${item.product.name} (${item.size})`),
-                createElement(Text, { style: styles.quantity }, item.quantity.toString()),
-                createElement(Text, { style: styles.price }, `${item.price.toFixed(2)} RON`),
-                createElement(Text, { style: styles.amount }, `${(item.price * item.quantity).toFixed(2)} RON`)
+              createElement(
+                Text,
+                {},
+                `Reg. Com.: ${order.details.regCom ?? "N/A"}`
+              ),
+              createElement(
+                Text,
+                {},
+                `Adresa sediului social: ${
+                  order.details.companyStreet ?? "N/A"
+                }`
+              ),
+              createElement(
+                Text,
+                {},
+                `${order.details.companyCity ?? "N/A"}, ${
+                  order.details.companyCounty ?? "N/A"
+                }`
               )
             ),
-            createElement(View, { style: styles.row },
-              createElement(Text, { style: styles.description }, "Taxă de livrare"),
+          ],
+          createElement(
+            View,
+            { style: styles.section },
+            createElement(
+              Text,
+              { style: styles.sectionTitle },
+              "Date livrare:"
+            ),
+            ...(order.details.isCompany
+              ? [
+                  createElement(Text, {}, `Adresa: ${order.details.street}`),
+                  createElement(
+                    Text,
+                    {},
+                    `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
+                  ),
+                  createElement(Text, {}, order.details.country),
+                ]
+              : [
+                  createElement(Text, {}, order.details.fullName),
+                  createElement(Text, {}, order.details.email),
+                  createElement(Text, {}, order.details.phoneNumber),
+                  createElement(Text, {}, order.details.street),
+                  createElement(
+                    Text,
+                    {},
+                    `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
+                  ),
+                  createElement(Text, {}, order.details.country),
+                ])
+          ),
+          createElement(
+            View,
+            { style: styles.section },
+            createElement(
+              View,
+              { style: styles.row },
+              createElement(
+                Text,
+                { style: [styles.description, styles.bold] },
+                "Produs"
+              ),
+              createElement(
+                Text,
+                { style: [styles.quantity, styles.bold] },
+                "Cant."
+              ),
+              createElement(
+                Text,
+                { style: [styles.price, styles.bold] },
+                "Pret"
+              ),
+              createElement(
+                Text,
+                { style: [styles.amount, styles.bold] },
+                "Total"
+              )
+            ),
+            ...order.items.map((item) =>
+              createElement(
+                View,
+                { key: item.id, style: styles.row },
+                createElement(
+                  Text,
+                  { style: styles.description },
+                  `${item.product.name} (${item.size})`
+                ),
+                createElement(
+                  Text,
+                  { style: styles.quantity },
+                  item.quantity.toString()
+                ),
+                createElement(
+                  Text,
+                  { style: styles.price },
+                  `${item.price.toFixed(2)} RON`
+                ),
+                createElement(
+                  Text,
+                  { style: styles.amount },
+                  `${(item.price * item.quantity).toFixed(2)} RON`
+                )
+              )
+            ),
+            createElement(
+              View,
+              { style: styles.row },
+              createElement(
+                Text,
+                { style: styles.description },
+                "Taxă de livrare"
+              ),
               createElement(Text, { style: styles.quantity }, "1"),
               createElement(Text, { style: styles.price }, "15.00 RON"),
               createElement(Text, { style: styles.amount }, "15.00 RON")
             )
           ),
-          createElement(View, { style: styles.totalContainer },
-            createElement(Text, { style: [styles.total, styles.bold] }, `Total: ${order.total.toFixed(2)} RON`)
+          createElement(
+            View,
+            { style: styles.totalContainer },
+            createElement(
+              Text,
+              { style: [styles.total, styles.bold] },
+              `Total: ${order.total.toFixed(2)} RON`
+            )
           )
         )
       )
@@ -376,11 +485,20 @@ export async function sendOrderConfirmation(order: OrderWithItems): Promise<Emai
       <p><strong>Total:</strong> $${order.total.toFixed(2)}</p>
       <h2>Order Details:</h2>
       <ul>
-        ${order.items.map(item => `<li>${item.quantity}x ${item.product.name} (${item.size}) - $${item.price.toFixed(2)}</li>`).join('')}
+        ${order.items
+          .map(
+            (item) =>
+              `<li>${item.quantity}x ${item.product.name} (${
+                item.size
+              }) - $${item.price.toFixed(2)}</li>`
+          )
+          .join("")}
       </ul>
       <h2>Shipping Address:</h2>
       <p>${order.details.street}</p>
-      <p>${order.details.city}, ${order.details.county} ${order.details.postalCode}</p>
+      <p>${order.details.city}, ${order.details.county} ${
+      order.details.postalCode
+    }</p>
       <p>${order.details.country}</p>
       <p>We'll notify you when your order has been shipped.</p>
       <p>If you have any questions, please don't hesitate to contact us.</p>
@@ -394,9 +512,9 @@ export async function sendOrderConfirmation(order: OrderWithItems): Promise<Emai
     ]);
   } catch (error: unknown) {
     console.error("Error sending order confirmation:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -411,7 +529,7 @@ export async function sendOrderConfirmationEmail(
     console.error("Error sending order confirmation email:", error);
     return {
       error: "Failed to send order confirmation email",
-      message: error instanceof Error ? error.message : "Unknown error"
+      message: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -427,7 +545,7 @@ export async function sendNewsletterEmail(
     console.error("Error sending newsletter email:", error);
     return {
       error: "Failed to send newsletter email",
-      message: error instanceof Error ? error.message : "Unknown error"
+      message: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -440,12 +558,13 @@ export async function sendFoilRequestNotification(
     return { success: false, error: "Email service not configured" };
   }
 
-  const urgencyText = {
-    low: "Scăzută - până în 2 săptămâni",
-    normal: "Normală - până în 1 săptămână", 
-    high: "Ridicată - în 2-3 zile",
-    urgent: "Urgentă - în 24 ore"
-  }[requestData.urgency] || requestData.urgency;
+  const urgencyText =
+    {
+      low: "Scăzută - până în 2 săptămâni",
+      normal: "Normală - până în 1 săptămână",
+      high: "Ridicată - în 2-3 zile",
+      urgent: "Urgentă - în 24 ore",
+    }[requestData.urgency] || requestData.urgency;
 
   const adminEmailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -455,30 +574,54 @@ export async function sendFoilRequestNotification(
       
       <h3 style="color: #555; margin-top: 20px;">Informații Client:</h3>
       <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Nume:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.name}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Email:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.email}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Telefon:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.phone}</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Nume:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.name
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Email:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.email
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Telefon:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.phone
+        }</td></tr>
       </table>
 
       <h3 style="color: #555; margin-top: 20px;">Detalii Mașină:</h3>
       <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Marca:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.carMake}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Model:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.carModel}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">An fabricație:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.carYear}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Generație:</td><td style="padding: 8px; border: 1px solid #ddd;">${requestData.carGeneration || 'Nu a fost specificată'}</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Marca:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.carMake
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Model:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.carModel
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">An fabricație:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.carYear
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Generație:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          requestData.carGeneration || "Nu a fost specificată"
+        }</td></tr>
       </table>
 
       <h3 style="color: #555; margin-top: 20px;">Detalii Cerere:</h3>
       <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Urgență:</td><td style="padding: 8px; border: 1px solid #ddd; color: ${requestData.urgency === 'urgent' ? '#dc3545' : requestData.urgency === 'high' ? '#fd7e14' : '#28a745'};">${urgencyText}</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Urgență:</td><td style="padding: 8px; border: 1px solid #ddd; color: ${
+          requestData.urgency === "urgent"
+            ? "#dc3545"
+            : requestData.urgency === "high"
+            ? "#fd7e14"
+            : "#28a745"
+        };">${urgencyText}</td></tr>
       </table>
 
-      ${requestData.additionalInfo ? `
+      ${
+        requestData.additionalInfo
+          ? `
         <h3 style="color: #555; margin-top: 20px;">Informații Suplimentare:</h3>
         <div style="padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff; margin: 10px 0;">
-          ${requestData.additionalInfo.replace(/\n/g, '<br>')}
+          ${requestData.additionalInfo.replace(/\n/g, "<br>")}
         </div>
-      ` : ''}
+      `
+          : ""
+      }
 
       <div style="margin-top: 30px; padding: 15px; background: #e9ecef; border-radius: 5px;">
         <p style="margin: 0; color: #666;">
@@ -533,9 +676,9 @@ export async function sendFoilRequestNotification(
     const adminEmails = await prisma.adminNotificationEmail.findMany();
 
     const adminResults = await Promise.allSettled(
-      adminEmails.map(admin => 
+      adminEmails.map((admin) =>
         sendEmail(
-          admin.email, 
+          admin.email,
           `🚗 Cerere Nouă Folie - ${requestData.carMake} ${requestData.carModel}`,
           adminEmailHtml
         )
@@ -549,20 +692,23 @@ export async function sendFoilRequestNotification(
       clientEmailHtml
     );
 
-    const allSuccessful = adminResults.every(result => 
-      result.status === 'fulfilled' && result.value.success
-    ) && clientResult.success;
+    const allSuccessful =
+      adminResults.every(
+        (result) => result.status === "fulfilled" && result.value.success
+      ) && clientResult.success;
 
     return {
       success: allSuccessful,
-      results: [...adminResults, { status: 'fulfilled' as const, value: clientResult }]
+      results: [
+        ...adminResults,
+        { status: "fulfilled" as const, value: clientResult },
+      ],
     };
-
   } catch (error) {
     console.error("Error sending foil request emails:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
@@ -575,21 +721,23 @@ export async function sendReturnRequestNotification(
     return { success: false, error: "Email service not configured" };
   }
 
-  const reasonText = {
-    defect: "Produs defect",
-    "wrong-size": "Mărime greșită", 
-    "not-as-described": "Nu corespunde descrierii",
-    "damaged-shipping": "Deteriorat la transport",
-    "changed-mind": "Am schimbat părerea",
-    other: "Altul"
-  }[returnData.returnReason] || returnData.returnReason;
+  const reasonText =
+    {
+      defect: "Produs defect",
+      "wrong-size": "Mărime greșită",
+      "not-as-described": "Nu corespunde descrierii",
+      "damaged-shipping": "Deteriorat la transport",
+      "changed-mind": "Am schimbat părerea",
+      other: "Altul",
+    }[returnData.returnReason] || returnData.returnReason;
 
-  const solutionText = {
-    refund: "Rambursare",
-    exchange: "Schimb cu produs similar",
-    repair: "Reparare", 
-    "store-credit": "Credit magazin"
-  }[returnData.preferredSolution] || returnData.preferredSolution;
+  const solutionText =
+    {
+      refund: "Rambursare",
+      exchange: "Schimb cu produs similar",
+      repair: "Reparare",
+      "store-credit": "Credit magazin",
+    }[returnData.preferredSolution] || returnData.preferredSolution;
 
   const adminEmailHtml = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -599,15 +747,25 @@ export async function sendReturnRequestNotification(
       
       <h3 style="color: #555; margin-top: 20px;">Informații Client:</h3>
       <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Nume:</td><td style="padding: 8px; border: 1px solid #ddd;">${returnData.firstName} ${returnData.lastName}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Email:</td><td style="padding: 8px; border: 1px solid #ddd;">${returnData.email}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Telefon:</td><td style="padding: 8px; border: 1px solid #ddd;">${returnData.phone || 'Nu a fost furnizat'}</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Nume:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          returnData.firstName
+        } ${returnData.lastName}</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Email:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          returnData.email
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Telefon:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          returnData.phone || "Nu a fost furnizat"
+        }</td></tr>
       </table>
 
       <h3 style="color: #555; margin-top: 20px;">Detalii Comandă:</h3>
       <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Număr comandă:</td><td style="padding: 8px; border: 1px solid #ddd;">${returnData.orderNumber}</td></tr>
-        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Produs:</td><td style="padding: 8px; border: 1px solid #ddd;">${returnData.productName}</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Număr comandă:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          returnData.orderNumber
+        }</td></tr>
+        <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Produs:</td><td style="padding: 8px; border: 1px solid #ddd;">${
+          returnData.productName
+        }</td></tr>
       </table>
 
       <h3 style="color: #555; margin-top: 20px;">Detalii Retur:</h3>
@@ -616,12 +774,16 @@ export async function sendReturnRequestNotification(
         <tr><td style="padding: 8px; border: 1px solid #ddd; background: #f9f9f9; font-weight: bold;">Soluție preferată:</td><td style="padding: 8px; border: 1px solid #ddd;">${solutionText}</td></tr>
       </table>
 
-      ${returnData.description ? `
+      ${
+        returnData.description
+          ? `
         <h3 style="color: #555; margin-top: 20px;">Descrierea Problemei:</h3>
         <div style="padding: 15px; background: #f8f9fa; border-left: 4px solid #dc3545; margin: 10px 0;">
-          ${returnData.description.replace(/\n/g, '<br>')}
+          ${returnData.description.replace(/\n/g, "<br>")}
         </div>
-      ` : ''}
+      `
+          : ""
+      }
 
       <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
         <p style="margin: 0; color: #856404;">
@@ -642,13 +804,17 @@ export async function sendReturnRequestNotification(
       </p>
       
       <p style="color: #555; font-size: 16px; line-height: 1.6;">
-        Îți mulțumim pentru cererea de retur pentru comanda <strong>#${returnData.orderNumber}</strong>!
+        Îți mulțumim pentru cererea de retur pentru comanda <strong>#${
+          returnData.orderNumber
+        }</strong>!
       </p>
 
       <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
         <h3 style="color: #333; margin-top: 0;">Detalii cerere:</h3>
         <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 5px 0; color: #666; font-weight: bold;">Produs:</td><td style="padding: 5px 0; color: #333;">${returnData.productName}</td></tr>
+          <tr><td style="padding: 5px 0; color: #666; font-weight: bold;">Produs:</td><td style="padding: 5px 0; color: #333;">${
+            returnData.productName
+          }</td></tr>
           <tr><td style="padding: 5px 0; color: #666; font-weight: bold;">Motiv:</td><td style="padding: 5px 0; color: #333;">${reasonText}</td></tr>
           <tr><td style="padding: 5px 0; color: #666; font-weight: bold;">Soluție preferată:</td><td style="padding: 5px 0; color: #333;">${solutionText}</td></tr>
         </table>
@@ -658,7 +824,9 @@ export async function sendReturnRequestNotification(
         <h3 style="color: #155724; margin-top: 0;">Ce urmează?</h3>
         <ul style="color: #155724; line-height: 1.8; margin: 0;">
           <li>Vom procesa cererea ta în 2-3 zile lucrătoare</li>
-          <li>Te vom contacta la <strong>${returnData.email}</strong> cu instrucțiunile de retur</li>
+          <li>Te vom contacta la <strong>${
+            returnData.email
+          }</strong> cu instrucțiunile de retur</li>
           <li>Îți vom furniza eticheta de transport (dacă este cazul)</li>
           <li>După primirea produsului, îți vom procesa ${solutionText.toLowerCase()}</li>
         </ul>
@@ -691,9 +859,9 @@ export async function sendReturnRequestNotification(
     const adminEmails = await prisma.adminNotificationEmail.findMany();
 
     const adminResults = await Promise.allSettled(
-      adminEmails.map(admin => 
+      adminEmails.map((admin) =>
         sendEmail(
-          admin.email, 
+          admin.email,
           `📦 Cerere Retur - Comanda #${returnData.orderNumber}`,
           adminEmailHtml
         )
@@ -703,24 +871,28 @@ export async function sendReturnRequestNotification(
     // Trimitem email de confirmare către client
     const clientResult = await sendEmail(
       returnData.email,
-      "✅ Cererea ta de retur a fost primită - Comanda #" + returnData.orderNumber,
+      "✅ Cererea ta de retur a fost primită - Comanda #" +
+        returnData.orderNumber,
       clientEmailHtml
     );
 
-    const allSuccessful = adminResults.every(result => 
-      result.status === 'fulfilled' && result.value.success
-    ) && clientResult.success;
+    const allSuccessful =
+      adminResults.every(
+        (result) => result.status === "fulfilled" && result.value.success
+      ) && clientResult.success;
 
     return {
       success: allSuccessful,
-      results: [...adminResults, { status: 'fulfilled' as const, value: clientResult }]
+      results: [
+        ...adminResults,
+        { status: "fulfilled" as const, value: clientResult },
+      ],
     };
-
   } catch (error) {
     console.error("Error sending return request emails:", error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
