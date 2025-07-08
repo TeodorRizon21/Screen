@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         type,
         value,
         usesLeft,
-        expirationDate,
+        expirationDate: expirationDate ? new Date(expirationDate) : null,
         canCumulate,
       },
     })
@@ -68,7 +68,7 @@ export async function PUT(request: Request) {
         type,
         value,
         usesLeft,
-        expirationDate,
+        expirationDate: expirationDate ? new Date(expirationDate) : null,
         canCumulate,
       },
     })

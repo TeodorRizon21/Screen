@@ -30,6 +30,20 @@ export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { isSignedIn } = useUser();
 
+  // GIF carousel logic
+  const gifList = [
+    "/gif%20luat%20folie%20de%20pe%20ecran.gif",
+    "/gif%20zgariere%20ecran.gif"
+  ];
+  const [currentGif, setCurrentGif] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentGif((prev) => (prev + 1) % gifList.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [gifList.length]);
+
   const handleMouseDown = () => {
     setIsDragging(true);
   };
@@ -198,77 +212,30 @@ export default function Home() {
               {/* Text descriptiv */}
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <p className="text-sm uppercase tracking-wider text-black font-medium">
-                    TEHNOLOGIA SCREENSHIELD
-                  </p>
                   <h2 className="text-3xl md:text-4xl font-bold text-black">
-                    Protecție avansată pentru mașina ta
+                    Protecție reală pentru display-ul tău
                   </h2>
                 </div>
-                
-                <div className="space-y-4 text-gray-700 leading-relaxed">
-                  <p className="text-lg">
-                    Folia de protecție ScreenShield reprezintă cea mai avansată tehnologie 
-                    în domeniul protecției vopselei auto. Dezvoltată cu materiale premium 
-                    și tehnologii inovatoare, oferă protecție completă împotriva zgârieturilor, 
-                    pietrelor și altor elemente care pot deteriora aspectul mașinii tale.
-                  </p>
-                  
-                  <p className="text-lg">
-                    Proprietatea noastră unică de auto-regenerare permite foliei să se repare 
-                    automat la temperaturi ridicate, eliminând zgârieturile minore și păstrând 
-                    aspectul impecabil al vopselei. Cu o transparență de 99.9% și o grosime 
-                    optimă de 200 microni, folia este aproape invizibilă după aplicare.
-                  </p>
-                  
-                  <p className="text-lg">
-                    Testată în condiții extreme și certificată conform standardelor internaționale, 
-                    folia ScreenShield rezistă la temperaturi între -40°C și +80°C, oferind 
-                    protecție durabilă timp de 5 ani cu garanție completă.
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-4 pt-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                    <span className="text-green-600 font-medium">5 ani garanție</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                    <span className="text-blue-600 font-medium">Auto-regenerare</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
-                    <span className="text-purple-600 font-medium">Calitate premium</span>
-                  </div>
-                </div>
-                
-                <div className="pt-6">
-                  <Link href="/collection/allproducts">
-                    <Button className="bg-black hover:bg-gray-800 text-white px-8 py-3 text-lg font-medium transition-all duration-300">
-                      Vezi toate produsele
-                    </Button>
-                  </Link>
-                </div>
+                <p className="text-lg text-gray-700">
+                  Vezi în GIF-ul alăturat cât de eficientă este folia PPF pentru ecranul mașinii.
+                </p>
               </div>
-              
-              {/* Placeholder pentru GIF */}
-              <div className="relative">
-                <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
-                  <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center">
-                    <div className="text-center space-y-4">
-                      <div className="w-16 h-16 bg-gray-300 rounded-full mx-auto flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-lg font-medium text-gray-700">GIF demonstrativ</p>
-                        <p className="text-sm text-gray-500">Va fi adăugat aici</p>
-                      </div>
-                    </div>
+              {/* GIF evidențiat + buton */}
+              <div className="relative flex flex-col items-center justify-center gap-6">
+                <div className="bg-white rounded-3xl shadow-2xl p-1 sm:p-2 md:p-4 w-full max-w-2xl mx-auto">
+                  <div className="aspect-video bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center overflow-hidden">
+                    <img
+                      src={gifList[currentGif]}
+                      alt="Demonstrație folie PPF pe display auto"
+                      className="w-full h-full object-contain rounded-2xl shadow-lg border-4 border-white transition-all duration-500"
+                    />
                   </div>
                 </div>
+                <Link href="/collection/allproducts">
+                  <Button className="bg-black hover:bg-gray-800 text-white px-8 py-3 text-lg font-medium transition-all duration-300">
+                    Vezi toate produsele
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
