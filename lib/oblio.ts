@@ -46,6 +46,7 @@ export interface OblioInvoiceData {
   total: number;
   orderNumber: string;
   orderDate: string;
+  note?: string;
 }
 
 export interface OblioCompanyData {
