@@ -44,6 +44,8 @@ model Order {
   awb               String?
   dpdShipmentId     String? // ID-ul expedierii în sistemul DPD (ex: EE20250624140758431BAODWHPM)
   dpdOperationCode  String? // Codul operațiunii DPD (ex: D11)
+  oblioInvoiceId    String? // ID-ul facturii în Oblio
+  oblioInvoiceNumber String? // Numărul facturii Oblio
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
   items             OrderItem[]
@@ -76,6 +78,7 @@ model OrderDetails {
   county        String
   postalCode    String
   country       String
+  cif           String?  // CIF-ul clientului pentru facturare
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

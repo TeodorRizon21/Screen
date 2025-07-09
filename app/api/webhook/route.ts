@@ -6,6 +6,8 @@ import { Prisma } from '@prisma/client';
 import { stripe } from '@/lib/stripe';
 import { createDPDShipmentForOrder } from '@/lib/dpd';
 import { sendAdminNotification, sendOrderConfirmation } from '@/lib/email';
+import { generateOblioInvoice } from '@/lib/oblio';
+import { generateOrderNumber } from '@/lib/orderNumber';
 
 interface OrderItem {
   productId: string;
@@ -59,8 +61,12 @@ export async function POST(req: Request) {
       };
       const parsedItems = JSON.parse(itemsJson) as OrderItem[];
 
+      // Generate order number
+      const orderNumber = await generateOrderNumber();
+
       const order = await prisma.order.create({
         data: {
+          orderNumber,
           userId,
           total: session.amount_total! / 100,
           paymentStatus: 'COMPLETED',
@@ -109,6 +115,60 @@ export async function POST(req: Request) {
         console.error('Eroare la crearea expedierii DPD:', dpdError);
         // Nu aruncăm eroarea mai departe, doar o logăm
         // Comanda a fost creată cu succes, vom încerca să creăm expedierea manual
+      }
+
+      // Generăm automat factura Oblio pentru toate comenzile
+      try {
+        console.log('=== ÎNCEPERE GENERARE FACTURĂ OBLIO ===');
+        console.log('Comanda ID:', order.id);
+        console.log('Order Number:', order.orderNumber);
+        console.log('Total:', order.total);
+        
+        // Transformăm datele comenzii în formatul necesar pentru Oblio
+        const oblioInvoiceData = {
+          cif: order.details.cif || 'RO00000000', // CIF-ul clientului sau unul default
+          nume: order.details.fullName,
+          email: order.details.email,
+          telefon: order.details.phoneNumber,
+          adresa: order.details.street,
+          oras: order.details.city,
+          judet: order.details.county || 'București',
+          codPostal: order.details.postalCode || '000000',
+          tara: 'România',
+          items: order.items.map(item => ({
+            nume: item.product.name,
+            pret: item.price,
+            cantitate: item.quantity,
+            um: 'buc'
+          })),
+          total: order.total,
+          orderNumber: order.orderNumber,
+          orderDate: new Date().toISOString().split('T')[0]
+        };
+        
+        console.log('Datele pentru Oblio:', JSON.stringify(oblioInvoiceData, null, 2));
+        
+        const invoiceResult = await generateOblioInvoice(oblioInvoiceData);
+        
+        console.log('Rezultatul generării facturii:', invoiceResult);
+        
+        // Actualizăm comanda cu ID-ul facturii Oblio
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            oblioInvoiceId: invoiceResult.invoiceId,
+            oblioInvoiceNumber: invoiceResult.invoiceNumber,
+          }
+        });
+        
+        console.log('Comanda actualizată cu ID-ul facturii Oblio');
+        console.log('=== FINALIZARE GENERARE FACTURĂ OBLIO ===');
+      } catch (error) {
+        console.error('=== EROARE LA GENERAREA FACTURII OBLIO ===');
+        console.error('Eroare completă:', error);
+        console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+        console.error('=== SFÂRȘIT EROARE ===');
+        // Nu întrerupem procesul dacă factura nu se poate genera
       }
 
       // Send notifications

@@ -23,6 +23,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -71,6 +72,8 @@ type Order = {
   paymentType: string;
   courier: string | null;
   awb: string | null;
+  oblioInvoiceId?: string | null;
+  oblioInvoiceNumber?: string | null;
   details: OrderDetails;
   discountCodes: {
     code: string;
@@ -84,6 +87,7 @@ interface OrderCardProps {
   onDelete: (id: string) => void;
   onFulfill: (id: string) => void;
   onDownloadInvoice: (id: string) => void;
+
   onCancel: (id: string) => void;
   onRefund: (id: string) => void;
 }
@@ -116,6 +120,15 @@ function OrderCard({
             >
               <Download className="h-4 w-4" />
             </Button>
+            {order.oblioInvoiceId ? (
+              <Badge variant="secondary" className="text-xs">
+                Factură: {order.oblioInvoiceNumber}
+              </Badge>
+            ) : (
+              <Badge variant="destructive" className="text-xs">
+                Fără factură
+              </Badge>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -459,30 +472,30 @@ export default function AdminOrderList() {
 
     // Aplicăm filtrele în funcție de selecție
     const matchesOrderFilter = (() => {
-      switch (orderFilter) {
-        case "nefinalizate":
-          return (
-            order.orderStatus !== "Comanda finalizata!" &&
-            order.orderStatus !== "Comanda anulata" &&
-            order.orderStatus !== "Comandă anulată" &&
-            order.orderStatus !== "Comanda rambursata" &&
-            order.orderStatus !== "Comandă rambursată"
-          );
-        case "card":
+    switch (orderFilter) {
+      case "nefinalizate":
+        return (
+          order.orderStatus !== "Comanda finalizata!" &&
+          order.orderStatus !== "Comanda anulata" &&
+          order.orderStatus !== "Comandă anulată" &&
+          order.orderStatus !== "Comanda rambursata" &&
+          order.orderStatus !== "Comandă rambursată"
+        );
+      case "card":
           return order.paymentType === "card";
-        case "ramburs":
+      case "ramburs":
           return order.paymentType === "ramburs";
-        case "completate":
+      case "completate":
           return isOrderStatus(order, ["Comanda finalizata!", "Comanda finalizată!"]);
-        case "anulate":
+      case "anulate":
           return isOrderStatus(order, ["Comanda anulata", "Comandă anulată"]);
-        case "rambursate":
+      case "rambursate":
           return isOrderStatus(order, ["Comanda rambursata", "Comandă rambursată"]);
-        case "toate":
+      case "toate":
           return true;
-        default:
+      default:
           return true;
-      }
+    }
     })();
 
     return matchesSearch && matchesOrderFilter && matchesMonthFilter(order);
@@ -741,26 +754,53 @@ export default function AdminOrderList() {
 
   const handleDownloadInvoice = async (orderId: string) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/invoice`);
-      if (!response.ok) {
-        throw new Error("Nu am putut descărca factura");
+      // Verificăm dacă există factură Oblio
+      const order = orders.find(o => o.id === orderId);
+      if (!order?.oblioInvoiceId) {
+        toast({
+          title: "Eroare",
+          description: "Nu există factură Oblio pentru această comandă. Generează mai întâi factura.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `factura-${orderId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const response = await fetch("/api/admin/oblio/download-invoice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Nu am putut descărca factura");
+      }
+
+      const result = await response.json();
+      
+      // Descărcăm PDF-ul din Oblio
+      if (result.pdfUrl) {
+        const pdfResponse = await fetch(result.pdfUrl);
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `factura-oblio-${result.invoiceNumber}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error("URL-ul PDF-ului nu este disponibil");
+      }
     } catch (error) {
-      console.error("Error downloading invoice:", error);
+      console.error("Error downloading Oblio invoice:", error);
       toast({
         title: "Eroare",
         description:
-          "Nu am putut descărca factura. Vă rugăm să încercați din nou.",
+          "Nu am putut descărca factura Oblio. Vă rugăm să încercați din nou.",
         variant: "destructive",
       });
     }
@@ -837,6 +877,8 @@ export default function AdminOrderList() {
       });
     }
   };
+
+
 
   return (
     <div className="space-y-6">

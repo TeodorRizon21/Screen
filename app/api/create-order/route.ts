@@ -4,6 +4,7 @@ import { sendAdminNotification, sendOrderConfirmation } from '@/lib/email'
 import { auth } from '@clerk/nextjs/server'
 import { dpdClient } from '@/lib/dpd'
 import { generateOrderNumber } from '@/lib/orderNumber'
+import { generateOblioInvoice } from '@/lib/oblio'
 
 export async function POST(req: Request) {
   try {
@@ -329,6 +330,60 @@ export async function POST(req: Request) {
       
       // Folosim comanda actualizată pentru emailuri
       completeOrder = updatedOrder;
+    }
+
+    // Generăm automat factura Oblio pentru toate comenzile
+    try {
+      console.log('=== ÎNCEPERE GENERARE FACTURĂ OBLIO ===');
+      console.log('Comanda ID:', completeOrder.id);
+      console.log('Order Number:', completeOrder.orderNumber);
+      console.log('Total:', completeOrder.total);
+      
+      // Transformăm datele comenzii în formatul necesar pentru Oblio
+      const oblioInvoiceData = {
+        cif: completeOrder.details.cif || 'RO00000000', // CIF-ul clientului sau unul default
+        nume: completeOrder.details.fullName,
+        email: completeOrder.details.email,
+        telefon: completeOrder.details.phoneNumber,
+        adresa: completeOrder.details.street,
+        oras: completeOrder.details.city,
+        judet: completeOrder.details.county || 'București',
+        codPostal: completeOrder.details.postalCode || '000000',
+        tara: 'România',
+        items: completeOrder.items.map(item => ({
+          nume: item.product.name,
+          pret: item.price,
+          cantitate: item.quantity,
+          um: 'buc'
+        })),
+        total: completeOrder.total,
+        orderNumber: completeOrder.orderNumber,
+        orderDate: new Date().toISOString().split('T')[0]
+      };
+      
+      console.log('Datele pentru Oblio:', JSON.stringify(oblioInvoiceData, null, 2));
+      
+      const invoiceResult = await generateOblioInvoice(oblioInvoiceData);
+      
+      console.log('Rezultatul generării facturii:', invoiceResult);
+      
+      // Actualizăm comanda cu ID-ul facturii Oblio
+      await prisma.order.update({
+        where: { id: completeOrder.id },
+        data: {
+          oblioInvoiceId: invoiceResult.invoiceId,
+          oblioInvoiceNumber: invoiceResult.invoiceNumber,
+        }
+      });
+      
+      console.log('Comanda actualizată cu ID-ul facturii Oblio');
+      console.log('=== FINALIZARE GENERARE FACTURĂ OBLIO ===');
+    } catch (error) {
+      console.error('=== EROARE LA GENERAREA FACTURII OBLIO ===');
+      console.error('Eroare completă:', error);
+      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('=== SFÂRȘIT EROARE ===');
+      // Nu întrerupem procesul dacă factura nu se poate genera
     }
 
     // Send notifications
