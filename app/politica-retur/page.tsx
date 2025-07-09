@@ -35,13 +35,7 @@ export default function PoliticaReturPage() {
               la data primirii produsului, completând formularul disponibil pe site.
             </p>
 
-            <p className="text-gray-700 leading-relaxed mt-4">
-              In cazul in care ati comandat un produs pentru care pe site sunt specificate marca, modelul, anii de fabricație și/sau dimensiunile, iar acesta nu corespunde acestor detalii, vă vom returna integral contravaloarea, chiar dacă produsul (folia) prezintă urme de folosire și nu mai este în starea inițială. 
-              In cazul in care produsul a fost comandat incorect, deși pe site sunt oferite toate informațiile necesare privind marca, modelul, anii de fabricație și dimensiunile, iar folia prezintă urme de folosire sau a fost desfăcută, returul nu va fi acceptat. Responsabilitatea alegerii corecte aparține cumpărătorului, care are obligația de a verifica și măsura în prealabil compatibilitatea produsului cu vehiculul său.
-
-
-
-            </p>
+            
 
             <p className="text-gray-700 leading-relaxed mt-4">
               Pentru informații adiționale contactați-ne la adresa de email din secțiunea contact.
@@ -54,6 +48,12 @@ export default function PoliticaReturPage() {
           <div>
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Condiții pentru returnare:</h3>
             <ul className="space-y-3 text-gray-700">
+              <li className="flex items-start gap-2">
+                <p className="text-gray-700 leading-relaxed mt-4">
+                In cazul in care ati comandat un produs pentru care pe site sunt specificate marca, modelul, anii de fabricație și/sau dimensiunile, iar acesta nu corespunde acestor detalii, vă vom returna integral contravaloarea, chiar dacă produsul (folia) prezintă urme de folosire și nu mai este în starea inițială. 
+                In cazul in care produsul a fost comandat incorect, deși pe site sunt oferite toate informațiile necesare privind marca, modelul, anii de fabricație și dimensiunile, iar folia prezintă urme de folosire sau a fost desfăcută, returul nu va fi acceptat. Responsabilitatea alegerii corecte aparține cumpărătorului, care are obligația de a verifica și măsura în prealabil compatibilitatea produsului cu vehiculul său.
+              </p>
+              </li>
               <li className="flex items-start gap-2">
                 <span className="text-orange-600 font-bold mt-1">•</span>
                 <span>Produsul trebuie să fie în aceeași stare în care a fost livrat: nefolosit, fără urme de uzură, cu toate accesoriile aferente.</span>

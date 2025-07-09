@@ -176,7 +176,7 @@ export default function Home() {
 
           {/* Text instructiv fix */}
           <div className="absolute bottom-[30%] sm:bottom-[20%] left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10">
-            <p className="text-white text-sm opacity-70 animate-pulse">
+            <p className="text-white text-md  animate-pulse">
               PPF Lucios | PPF Mat -
             </p>
           </div>

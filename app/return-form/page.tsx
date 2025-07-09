@@ -20,6 +20,7 @@ export default function ReturnFormPage() {
     orderNumber: "",
     productName: "",
     returnReason: "",
+    productCondition: "",
     description: "",
     preferredSolution: "",
   });
@@ -74,6 +75,7 @@ export default function ReturnFormPage() {
           orderNumber: "",
           productName: "",
           returnReason: "",
+          productCondition: "",
           description: "",
           preferredSolution: "",
         });
@@ -221,6 +223,23 @@ export default function ReturnFormPage() {
                       <SelectItem value="damaged-shipping">Deteriorat la transport</SelectItem>
                       <SelectItem value="changed-mind">Am schimbat părerea</SelectItem>
                       <SelectItem value="other">Altul</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Starea produsului */}
+                <div>
+                  <Label htmlFor="productCondition">Starea produsului *</Label>
+                  <Select 
+                    value={formData.productCondition} 
+                    onValueChange={(value) => handleSelectChange("productCondition", value)}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selectați starea produsului" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unused">Nefolosit</SelectItem>
+                      <SelectItem value="used">Folosit</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

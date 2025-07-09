@@ -366,6 +366,7 @@ export default function AdminOrderList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [orderFilter, setOrderFilter] = useState("nefinalizate");
+  const [monthFilter, setMonthFilter] = useState<string>("toate");
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [showBulkActionDialog, setShowBulkActionDialog] = useState(false);
   const [bulkAction, setBulkAction] = useState<
@@ -421,41 +422,70 @@ export default function AdminOrderList() {
       );
     };
 
+    // Funcție helper pentru a verifica luna comenzii
+    const matchesMonthFilter = (order: Order) => {
+      if (monthFilter === "toate") return true;
+      
+      const orderDate = new Date(order.createdAt);
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth();
+      
+      switch (monthFilter) {
+        case "luna_curenta":
+          return orderDate.getFullYear() === currentYear && 
+                 orderDate.getMonth() === currentMonth;
+        case "luna_trecuta":
+          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+          return orderDate.getFullYear() === lastMonthYear && 
+                 orderDate.getMonth() === lastMonth;
+        case "ultimele_3_luni":
+          const threeMonthsAgo = new Date(currentDate);
+          threeMonthsAgo.setMonth(currentMonth - 3);
+          return orderDate >= threeMonthsAgo;
+        case "ultimele_6_luni":
+          const sixMonthsAgo = new Date(currentDate);
+          sixMonthsAgo.setMonth(currentMonth - 6);
+          return orderDate >= sixMonthsAgo;
+        case "anul_curent":
+          return orderDate.getFullYear() === currentYear;
+        case "anul_trecut":
+          return orderDate.getFullYear() === currentYear - 1;
+        default:
+          return true;
+      }
+    };
+
     // Aplicăm filtrele în funcție de selecție
-    switch (orderFilter) {
-      case "nefinalizate":
-        return (
-          matchesSearch &&
-          order.orderStatus !== "Comanda finalizata!" &&
-          order.orderStatus !== "Comanda anulata" &&
-          order.orderStatus !== "Comandă anulată" &&
-          order.orderStatus !== "Comanda rambursata" &&
-          order.orderStatus !== "Comandă rambursată"
-        );
-      case "card":
-        return matchesSearch && order.paymentType === "card";
-      case "ramburs":
-        return matchesSearch && order.paymentType === "ramburs";
-      case "completate":
-        return (
-          matchesSearch &&
-          isOrderStatus(order, ["Comanda finalizata!", "Comanda finalizată!"])
-        );
-      case "anulate":
-        return (
-          matchesSearch &&
-          isOrderStatus(order, ["Comanda anulata", "Comandă anulată"])
-        );
-      case "rambursate":
-        return (
-          matchesSearch &&
-          isOrderStatus(order, ["Comanda rambursata", "Comandă rambursată"])
-        );
-      case "toate":
-        return matchesSearch;
-      default:
-        return matchesSearch;
-    }
+    const matchesOrderFilter = (() => {
+      switch (orderFilter) {
+        case "nefinalizate":
+          return (
+            order.orderStatus !== "Comanda finalizata!" &&
+            order.orderStatus !== "Comanda anulata" &&
+            order.orderStatus !== "Comandă anulată" &&
+            order.orderStatus !== "Comanda rambursata" &&
+            order.orderStatus !== "Comandă rambursată"
+          );
+        case "card":
+          return order.paymentType === "card";
+        case "ramburs":
+          return order.paymentType === "ramburs";
+        case "completate":
+          return isOrderStatus(order, ["Comanda finalizata!", "Comanda finalizată!"]);
+        case "anulate":
+          return isOrderStatus(order, ["Comanda anulata", "Comandă anulată"]);
+        case "rambursate":
+          return isOrderStatus(order, ["Comanda rambursata", "Comandă rambursată"]);
+        case "toate":
+          return true;
+        default:
+          return true;
+      }
+    })();
+
+    return matchesSearch && matchesOrderFilter && matchesMonthFilter(order);
   });
 
   // Calculăm statisticile pentru comenzile filtrate
@@ -476,24 +506,59 @@ export default function AdminOrderList() {
 
   // Funcție pentru a obține titlul statisticilor bazat pe filtrul curent
   const getStatsTitle = () => {
+    let baseTitle = "";
     switch (orderFilter) {
       case "nefinalizate":
-        return "Comenzi Nefinalizate";
+        baseTitle = "Comenzi Nefinalizate";
+        break;
       case "card":
-        return "Comenzi cu Plata Card";
+        baseTitle = "Comenzi cu Plata Card";
+        break;
       case "ramburs":
-        return "Comenzi cu Plata Ramburs";
+        baseTitle = "Comenzi cu Plata Ramburs";
+        break;
       case "completate":
-        return "Comenzi Completate";
+        baseTitle = "Comenzi Completate";
+        break;
       case "anulate":
-        return "Comenzi Anulate";
+        baseTitle = "Comenzi Anulate";
+        break;
       case "rambursate":
-        return "Comenzi Rambursate";
+        baseTitle = "Comenzi Rambursate";
+        break;
       case "toate":
-        return "Toate Comenzile";
+        baseTitle = "Toate Comenzile";
+        break;
       default:
-        return "Toate Comenzile";
+        baseTitle = "Toate Comenzile";
     }
+
+    // Adăugăm informația despre perioada selectată
+    let periodInfo = "";
+    switch (monthFilter) {
+      case "luna_curenta":
+        periodInfo = " (Luna curentă)";
+        break;
+      case "luna_trecuta":
+        periodInfo = " (Luna trecută)";
+        break;
+      case "ultimele_3_luni":
+        periodInfo = " (Ultimele 3 luni)";
+        break;
+      case "ultimele_6_luni":
+        periodInfo = " (Ultimele 6 luni)";
+        break;
+      case "anul_curent":
+        periodInfo = " (Anul curent)";
+        break;
+      case "anul_trecut":
+        periodInfo = " (Anul trecut)";
+        break;
+      default:
+        periodInfo = "";
+    }
+
+    return baseTitle + periodInfo;
   };
 
   // Funcție pentru a selecta/deselecta toate comenzile filtrate
@@ -784,7 +849,7 @@ export default function AdminOrderList() {
             className="w-full"
           />
         </div>
-        <div className="w-full md:w-64">
+        <div className="w-full md:w-48">
           <Select value={orderFilter} onValueChange={setOrderFilter}>
             <SelectTrigger>
               <SelectValue placeholder="Filtrează comenzile" />
@@ -797,6 +862,22 @@ export default function AdminOrderList() {
               <SelectItem value="completate">Completate</SelectItem>
               <SelectItem value="anulate">Anulate</SelectItem>
               <SelectItem value="rambursate">Rambursate</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full md:w-48">
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filtrează după perioadă" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="toate">Toate perioadele</SelectItem>
+              <SelectItem value="luna_curenta">Luna curentă</SelectItem>
+              <SelectItem value="luna_trecuta">Luna trecută</SelectItem>
+              <SelectItem value="ultimele_3_luni">Ultimele 3 luni</SelectItem>
+              <SelectItem value="ultimele_6_luni">Ultimele 6 luni</SelectItem>
+              <SelectItem value="anul_curent">Anul curent</SelectItem>
+              <SelectItem value="anul_trecut">Anul trecut</SelectItem>
             </SelectContent>
           </Select>
         </div>

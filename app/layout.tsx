@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/toaster";
 import PageWrapper from "@/components/PageWrapper";
 import CookieConsent from "@/components/CookieConsent";
 import Footer from "@/components/Footer";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -37,6 +38,7 @@ export default function RootLayout({
                     <PageWrapper>{children}</PageWrapper>
                   </div>
                   <Footer />
+                  <WhatsAppButton />
                   <Toaster />
                   <CookieConsent />
                 </ScrollProvider>

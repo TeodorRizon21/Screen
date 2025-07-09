@@ -68,15 +68,21 @@ export default function CollectionContent({
       (key) => COLLECTIONS[key as keyof typeof COLLECTIONS] === collection
     );
     setCollectionKey(currentCollectionKey || null);
-  }, [collection, collectionToMake]);
+    console.log("🔍 Collection detected:", collection, "Key:", currentCollectionKey);
+  }, [collection]);
 
   useEffect(() => {
     async function fetchProducts() {
       try {
         console.log("🚀 STARTING fetchProducts...");
-        const endpoint = `/api/products/collection?collection=${encodeURIComponent(
-          collectionKey || collection
-        )}`;
+        // Folosim collectionKey (cheia) pentru API, nu collection (valoarea)
+        // Dacă nu avem collectionKey, încercăm să găsim cheia din valoarea collection
+        const apiCollectionKey = collectionKey || Object.keys(COLLECTIONS).find(
+          (key) => COLLECTIONS[key as keyof typeof COLLECTIONS] === collection
+        ) || collection;
+        
+        const endpoint = `/api/products/collection?collection=${encodeURIComponent(apiCollectionKey)}`;
+        console.log("🔑 Collection key for API:", apiCollectionKey, "Collection value:", collection);
         console.log("🌐 API Endpoint:", `${endpoint}&sort=${initialSort}`);
 
         const response = await fetch(`${endpoint}&sort=${initialSort}`);

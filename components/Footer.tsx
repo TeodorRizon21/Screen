@@ -61,6 +61,27 @@ export default function Footer() {
                   Termeni și condiții
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="https://anpc.ro/"
+                  className="text-gray-700 hover:text-black text-sm">
+                  A.N.P.C.
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="https://reclamatiisal.anpc.ro/"
+                  className="block mt-3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    src="/anpc.png"
+                    alt="ANPC - Autoritatea Națională pentru Protecția Consumatorilor"
+                    className="h-12 w-auto hover:opacity-80 transition-opacity"
+                  />
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -71,7 +92,7 @@ export default function Footer() {
               <div className="flex items-start gap-2">
                 <MapPin size={18} className="text-gray-700 mt-0.5" />
                 <span className="text-sm text-gray-700">
-                București, Sector 6, Aleea Potaisa nr 3
+                Bulevardul Timișoara 161, Sector 6, București
                 </span>
               </div>
               <div className="flex items-center gap-2">
