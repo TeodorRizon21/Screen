@@ -431,8 +431,8 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
     }
     console.log('Site ID găsit:', siteId);
     
-    // Extragem numele străzii fără număr
-    const streetName = orderDetails.street.replace(/\d+.*$/, '').trim().toUpperCase();
+    // Folosim numele străzii direct din câmpul street
+    const streetName = orderDetails.street.trim().toUpperCase();
     console.log('Căutăm ID-ul pentru strada:', streetName);
     const streetId = await dpdClient.findStreet(siteId, streetName);
     
@@ -441,9 +441,12 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
     }
     console.log('Street ID găsit:', streetId);
 
-    // Extragem numărul străzii
-    const streetNoMatch = orderDetails.street.match(/\d+/);
-    const streetNo = streetNoMatch ? streetNoMatch[0] : '1';
+    // Folosim numărul străzii din câmpul streetNumber sau extragem din street
+    let streetNo = orderDetails.streetNumber || '1';
+    if (!orderDetails.streetNumber && orderDetails.street) {
+      const streetMatch = orderDetails.street.match(/\d+/);
+      streetNo = streetMatch ? streetMatch[0] : '1';
+    }
     console.log('Număr stradă extras:', streetNo);
 
     // Calculăm greutatea totală a comenzii

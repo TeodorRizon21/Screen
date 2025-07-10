@@ -181,8 +181,8 @@ export async function POST(req: Request) {
         throw new Error(`Nu am putut găsi orașul ${completeOrder.details.city} în sistemul DPD`);
       }
       
-      // Extragem numele străzii fără număr
-      const streetName = completeOrder.details.street.replace(/\d+.*$/, '').trim().toUpperCase();
+      // Folosim numele străzii direct din câmpul street
+      const streetName = completeOrder.details.street.trim().toUpperCase();
       console.log('Căutăm ID-ul pentru strada:', streetName);
       const streetId = await dpdClient.findStreet(siteId, streetName);
       
@@ -190,9 +190,12 @@ export async function POST(req: Request) {
         throw new Error(`Nu am putut găsi strada ${streetName} în sistemul DPD`);
       }
 
-      // Extragem numărul străzii
-      const streetNoMatch = completeOrder.details.street.match(/\d+/);
-      const streetNo = streetNoMatch ? streetNoMatch[0] : '1';
+      // Folosim numărul străzii din câmpul streetNumber sau extragem din street
+      let streetNo = completeOrder.details.streetNumber || '1';
+      if (!completeOrder.details.streetNumber && completeOrder.details.street) {
+        const streetMatch = completeOrder.details.street.match(/\d+/);
+        streetNo = streetMatch ? streetMatch[0] : '1';
+      }
 
       // Greutate fixă de 1kg pentru toate expedierile
       const totalWeight = 1;

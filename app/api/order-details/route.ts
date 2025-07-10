@@ -12,7 +12,11 @@ export async function POST(req: Request) {
       fullName, 
       email, 
       phoneNumber, 
-      address,
+      street,
+      streetNumber,
+      block,
+      floor,
+      apartment,
       city, 
       county, 
       postalCode, 
@@ -34,7 +38,8 @@ export async function POST(req: Request) {
     if (!fullName) missingFields.push('Numele complet');
     if (!email) missingFields.push('Email');
     if (!phoneNumber) missingFields.push('Numarul de telefon');
-    if (!address) missingFields.push('Strada');
+    if (!street) missingFields.push('Strada');
+    // streetNumber is now optional
     if (!city) missingFields.push('Orasul');
     if (!county) missingFields.push('Judetul');
     if (!postalCode) missingFields.push('Codul postal');
@@ -84,7 +89,11 @@ export async function POST(req: Request) {
         fullName,
         email,
         phoneNumber,
-        street: address,
+        street,
+        streetNumber: streetNumber || null,
+        block: block || null,
+        floor: floor || null,
+        apartment: apartment || null,
         city,
         county,
         postalCode,

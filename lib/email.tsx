@@ -33,6 +33,10 @@ interface OrderDetails {
   email: string;
   phoneNumber: string;
   street: string;
+  streetNumber?: string;
+  block?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
   city: string;
   county: string;
   postalCode: string;
@@ -377,7 +381,7 @@ export async function sendOrderConfirmation(
             ),
             ...(order.details.isCompany
               ? [
-                  createElement(Text, {}, `Adresa: ${order.details.street}`),
+                  createElement(Text, {}, `Adresa: ${order.details.street} ${order.details.streetNumber || ''}${order.details.block ? `, Bloc ${order.details.block}` : ''}${order.details.floor ? `, Etaj ${order.details.floor}` : ''}${order.details.apartment ? `, Ap ${order.details.apartment}` : ''}`),
                   createElement(
                     Text,
                     {},
@@ -389,7 +393,7 @@ export async function sendOrderConfirmation(
                   createElement(Text, {}, order.details.fullName),
                   createElement(Text, {}, order.details.email),
                   createElement(Text, {}, order.details.phoneNumber),
-                  createElement(Text, {}, order.details.street),
+                  createElement(Text, {}, `${order.details.street} ${order.details.streetNumber || ''}${order.details.block ? `, Bloc ${order.details.block}` : ''}${order.details.floor ? `, Etaj ${order.details.floor}` : ''}${order.details.apartment ? `, Ap ${order.details.apartment}` : ''}`),
                   createElement(
                     Text,
                     {},
@@ -478,30 +482,37 @@ export async function sendOrderConfirmation(
     );
 
     const html = `
-      <h1>Thank you for your order!</h1>
-      <p>Dear ${order.details.fullName},</p>
-      <p>We're pleased to confirm your order has been received and is being processed.</p>
-      <p><strong>Order ID:</strong> ${order.id}</p>
-      <p><strong>Total:</strong> $${order.total.toFixed(2)}</p>
-      <h2>Order Details:</h2>
-      <ul>
-        ${order.items
-          .map(
-            (item) =>
-              `<li>${item.quantity}x ${item.product.name} (${
-                item.size
-              }) - $${item.price.toFixed(2)}</li>`
-          )
-          .join("")}
-      </ul>
-      <h2>Shipping Address:</h2>
-      <p>${order.details.street}</p>
-      <p>${order.details.city}, ${order.details.county} ${
-      order.details.postalCode
-    }</p>
-      <p>${order.details.country}</p>
-      <p>We'll notify you when your order has been shipped.</p>
-      <p>If you have any questions, please don't hesitate to contact us.</p>
+      <div style="max-width:600px;margin:0 auto;font-family:sans-serif;background:#fff;border-radius:10px;overflow:hidden;">
+        <!-- LOGO -->
+        <div style="text-align:center;padding:32px 0 16px 0;">
+          <img src="https://screenshield.ro/logoscreenshield.png" alt="Screen Shield" style="height:60px;">
+        </div>
+
+        <!-- HEADER -->
+        <div style="background:#ff7f2a;color:#fff;text-align:center;padding:16px 0;font-size:24px;font-weight:bold;border-radius:30px;margin:0 40px;">
+          COMANDA PLASATA CU SUCCES
+        </div>
+
+        <!-- MESAJ -->
+        <div style="padding:32px 32px 0 32px;font-size:16px;color:#222;">
+          <p>Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii. Puteți verifica statusul comenzii dumneavoastră prin conectare la contul personal.</p>
+          <p>Dacă aveți întrebări referitoare la comanda dumneavoastră, ne puteți trimite email la <b>contact@screenshield.ro</b> sau pe WhatsApp la <b>07xx xxx xxx</b>.</p>
+        </div>
+
+        <!-- DETALII COMANDA -->
+        <div style="background:#ff7f2a;color:#fff;text-align:center;padding:12px 0;font-size:20px;font-weight:bold;border-radius:30px;margin:32px 40px 0 40px;">
+          DETALII COMANDĂ
+        </div>
+        <div style="padding:24px 32px 32px 32px;font-size:16px;color:#222;">
+          <p><b>Număr de comandă:</b> ${order.orderNumber}</p>
+          <p><b>Detalii Comandă:</b></p>
+          <ul style="padding-left:20px;">
+            ${order.items.map(item => `<li>${item.quantity}x ${item.product.name} (${item.size}) - ${item.price.toFixed(2)} RON</li>`).join('')}
+          </ul>
+          <p><b>Suma:</b> ${order.total.toFixed(2)} RON</p>
+          <p><b>Adresă de livrare:</b> ${order.details.street} ${order.details.streetNumber || ''}${order.details.block ? ', Bloc ' + order.details.block : ''}${order.details.floor ? ', Etaj ' + order.details.floor : ''}${order.details.apartment ? ', Ap ' + order.details.apartment : ''}, ${order.details.city}, ${order.details.county}, ${order.details.postalCode}, ${order.details.country}</p>
+        </div>
+      </div>
     `;
 
     return await sendEmail(order.details.email, "Order Confirmation", html, [

@@ -43,7 +43,11 @@ const formSchema = z
       .min(10, "Numarul de telefon trebuie sa aiba cel putin 10 caractere"),
 
     // Informatii livrare
-    address: z.string().min(5, "Adresa trebuie sa aiba cel putin 5 caractere"),
+    street: z.string().min(2, "Strada trebuie sa aiba cel putin 2 caractere"),
+    streetNumber: z.string().optional(),
+    block: z.string().optional(),
+    floor: z.string().optional(),
+    apartment: z.string().optional(),
     city: z.string().min(2, "Orasul trebuie sa aiba cel putin 2 caractere"),
     county: z.string().min(2, "Judetul trebuie sa aiba cel putin 2 caractere"),
     postalCode: z
@@ -123,7 +127,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
       fullName: "",
       email: "",
       phoneNumber: "",
-      address: "",
+      street: "",
+      streetNumber: undefined,
+      block: "",
+      floor: "",
+      apartment: "",
       city: "",
       county: "",
       postalCode: "",
@@ -545,19 +553,75 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
 
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Informații livrare</h2>
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Adresă*</FormLabel>
-                    <FormControl>
-                      <Input {...field} className="bg-white" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Strada*</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-white" placeholder="ex: Astrelor" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="streetNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Numărul străzii (opțional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-white" placeholder="ex: 57" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="block"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bloc (opțional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-white" placeholder="ex: A" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="floor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Etaj (opțional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-white" placeholder="ex: 3" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="apartment"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Apartament (opțional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} className="bg-white" placeholder="ex: 15" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}

@@ -74,6 +74,10 @@ model OrderDetails {
   email         String
   phoneNumber   String
   street        String
+  streetNumber  String?
+  block         String?
+  floor         String?
+  apartment     String?
   city          String
   county        String
   postalCode    String

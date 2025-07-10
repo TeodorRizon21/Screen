@@ -31,6 +31,10 @@ type OrderDetails = {
   email: string;
   phoneNumber: string;
   street: string;
+  streetNumber?: string;
+  block?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
   city: string;
   county: string;
   postalCode: string;
@@ -356,7 +360,12 @@ export default function OrdersContent({ userId }: { userId: string }) {
                         <p className="text-sm">{order.details.fullName}</p>
                         <p className="text-sm">{order.details.email}</p>
                         <p className="text-sm">{order.details.phoneNumber}</p>
-                        <p className="text-sm">{order.details.street}</p>
+                        <p className="text-sm">
+                          {order.details.street} {order.details.streetNumber || ''}
+                          {order.details.block && `, Bloc ${order.details.block}`}
+                          {order.details.floor && `, Etaj ${order.details.floor}`}
+                          {order.details.apartment && `, Ap ${order.details.apartment}`}
+                        </p>
                         <p className="text-sm">
                           {order.details.city}, {order.details.county}{" "}
                           {order.details.postalCode}

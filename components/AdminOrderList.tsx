@@ -52,6 +52,10 @@ type OrderDetails = {
   email: string;
   phoneNumber: string;
   street: string;
+  streetNumber?: string;
+  block?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
   city: string;
   county: string;
   postalCode: string;
@@ -216,8 +220,11 @@ function OrderCard({
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Adresă:</span>{" "}
-                      {order.details.street}, {order.details.city},{" "}
-                      {order.details.county}
+                      {order.details.street} {order.details.streetNumber || ''}
+                      {order.details.block && `, Bloc ${order.details.block}`}
+                      {order.details.floor && `, Etaj ${order.details.floor}`}
+                      {order.details.apartment && `, Ap ${order.details.apartment}`}
+                      , {order.details.city}, {order.details.county}
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Cod Poștal:</span>{" "}
@@ -400,6 +407,10 @@ export default function AdminOrderList() {
       order.details.email.toLowerCase().includes(searchTermLower) ||
       order.details.phoneNumber.includes(searchTerm) ||
       order.details.street.toLowerCase().includes(searchTermLower) ||
+      order.details.streetNumber?.toLowerCase().includes(searchTermLower) ||
+      order.details.block?.toLowerCase().includes(searchTermLower) ||
+      order.details.floor?.toLowerCase().includes(searchTermLower) ||
+      order.details.apartment?.toLowerCase().includes(searchTermLower) ||
       order.details.city.toLowerCase().includes(searchTermLower) ||
       order.details.county.toLowerCase().includes(searchTermLower) ||
       order.details.postalCode.includes(searchTerm) ||
