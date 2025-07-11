@@ -162,6 +162,7 @@ export async function POST(req: Request) {
           data: {
             oblioInvoiceId: invoiceResult.invoiceId,
             oblioInvoiceNumber: invoiceResult.invoiceNumber,
+            oblioInvoiceUrl: invoiceResult.pdfUrl,
           }
         });
         

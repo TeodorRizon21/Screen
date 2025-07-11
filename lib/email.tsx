@@ -76,6 +76,8 @@ interface OrderWithItems {
     product: OrderProduct;
   })[];
   details: OrderDetails;
+  oblioInvoiceUrl?: string | null;
+  oblioInvoiceNumber?: string | null;
 }
 
 // Tipuri pentru formularele noi
@@ -305,181 +307,33 @@ export async function sendOrderConfirmation(
   }
 
   try {
-    const currentDate = format(new Date(), "dd/MM/yyyy");
+    // Pregătim atașamentele
+    const attachments: EmailAttachment[] = [];
 
-    const pdfBuffer = await renderToBuffer(
-      createElement(
-        Document,
-        {},
-        createElement(
-          Page,
-          { size: "A4", style: styles.page },
-          createElement(
-            View,
-            { style: styles.header },
-            createElement(
-              Text,
-              { style: [styles.title, styles.bold] },
-              "Factura"
-            ),
-            createElement(Text, {}, `Data: ${currentDate}`),
-            createElement(Text, {}, `Numar comanda: ${order.orderNumber}`)
-          ),
-          order.details.isCompany && [
-            createElement(
-              View,
-              { style: styles.section },
-              createElement(
-                Text,
-                { style: styles.sectionTitle },
-                "Date furnizor:"
-              ),
-              createElement(Text, {}, "ScreenShield SRL"),
-              createElement(Text, {}, "CUI: RO12345678"),
-              createElement(Text, {}, "Reg. Com.: J40/123/2023"),
-              createElement(Text, {}, "Adresa: Strada Exemplu, Nr. 123"),
-              createElement(Text, {}, "Oras, Judet, Cod Postal")
-            ),
-            createElement(
-              View,
-              { style: styles.section },
-              createElement(
-                Text,
-                { style: styles.sectionTitle },
-                "Date cumparator:"
-              ),
-              createElement(Text, {}, order.details.companyName ?? "N/A"),
-              createElement(Text, {}, `CUI: ${order.details.cui ?? "N/A"}`),
-              createElement(
-                Text,
-                {},
-                `Reg. Com.: ${order.details.regCom ?? "N/A"}`
-              ),
-              createElement(
-                Text,
-                {},
-                `Adresa sediului social: ${
-                  order.details.companyStreet ?? "N/A"
-                }`
-              ),
-              createElement(
-                Text,
-                {},
-                `${order.details.companyCity ?? "N/A"}, ${
-                  order.details.companyCounty ?? "N/A"
-                }`
-              )
-            ),
-          ],
-          createElement(
-            View,
-            { style: styles.section },
-            createElement(
-              Text,
-              { style: styles.sectionTitle },
-              "Date livrare:"
-            ),
-            ...(order.details.isCompany
-              ? [
-                  createElement(Text, {}, `Adresa: ${order.details.street} ${order.details.streetNumber || ''}${order.details.block ? `, Bloc ${order.details.block}` : ''}${order.details.floor ? `, Etaj ${order.details.floor}` : ''}${order.details.apartment ? `, Ap ${order.details.apartment}` : ''}`),
-                  createElement(
-                    Text,
-                    {},
-                    `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
-                  ),
-                  createElement(Text, {}, order.details.country),
-                ]
-              : [
-                  createElement(Text, {}, order.details.fullName),
-                  createElement(Text, {}, order.details.email),
-                  createElement(Text, {}, order.details.phoneNumber),
-                  createElement(Text, {}, `${order.details.street} ${order.details.streetNumber || ''}${order.details.block ? `, Bloc ${order.details.block}` : ''}${order.details.floor ? `, Etaj ${order.details.floor}` : ''}${order.details.apartment ? `, Ap ${order.details.apartment}` : ''}`),
-                  createElement(
-                    Text,
-                    {},
-                    `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
-                  ),
-                  createElement(Text, {}, order.details.country),
-                ])
-          ),
-          createElement(
-            View,
-            { style: styles.section },
-            createElement(
-              View,
-              { style: styles.row },
-              createElement(
-                Text,
-                { style: [styles.description, styles.bold] },
-                "Produs"
-              ),
-              createElement(
-                Text,
-                { style: [styles.quantity, styles.bold] },
-                "Cant."
-              ),
-              createElement(
-                Text,
-                { style: [styles.price, styles.bold] },
-                "Pret"
-              ),
-              createElement(
-                Text,
-                { style: [styles.amount, styles.bold] },
-                "Total"
-              )
-            ),
-            ...order.items.map((item) =>
-              createElement(
-                View,
-                { key: item.id, style: styles.row },
-                createElement(
-                  Text,
-                  { style: styles.description },
-                  `${item.product.name} (${item.size})`
-                ),
-                createElement(
-                  Text,
-                  { style: styles.quantity },
-                  item.quantity.toString()
-                ),
-                createElement(
-                  Text,
-                  { style: styles.price },
-                  `${item.price.toFixed(2)} RON`
-                ),
-                createElement(
-                  Text,
-                  { style: styles.amount },
-                  `${(item.price * item.quantity).toFixed(2)} RON`
-                )
-              )
-            ),
-            createElement(
-              View,
-              { style: styles.row },
-              createElement(
-                Text,
-                { style: styles.description },
-                "Taxă de livrare"
-              ),
-              createElement(Text, { style: styles.quantity }, "1"),
-              createElement(Text, { style: styles.price }, "15.00 RON"),
-              createElement(Text, { style: styles.amount }, "15.00 RON")
-            )
-          ),
-          createElement(
-            View,
-            { style: styles.totalContainer },
-            createElement(
-              Text,
-              { style: [styles.total, styles.bold] },
-              `Total: ${order.total.toFixed(2)} RON`
-            )
-          )
-        )
-      )
-    );
+    // Descărcăm și atașăm factura Oblio
+    if (order.oblioInvoiceUrl) {
+      try {
+        console.log("Descărcăm factura Oblio de la:", order.oblioInvoiceUrl);
+        const oblioResponse = await fetch(order.oblioInvoiceUrl);
+        if (!oblioResponse.ok) {
+          console.error(
+            `Failed to download Oblio invoice: ${oblioResponse.statusText}`
+          );
+          // Nu aruncăm eroare aici, continuăm cu link-ul
+        } else {
+          const oblioBuffer = await oblioResponse.arrayBuffer();
+          attachments.push({
+            filename: `factura-${order.oblioInvoiceNumber || order.id}.pdf`,
+            content: Buffer.from(oblioBuffer),
+          });
+          console.log("Factura Oblio atașată cu succes");
+        }
+      } catch (error) {
+        console.error("Eroare la descărcarea facturii Oblio:", error);
+      }
+    } else {
+      console.log("Nu există URL pentru factura Oblio");
+    }
 
     const html = `
       <div style="max-width:600px;margin:0 auto;font-family:sans-serif;background:#fff;border-radius:10px;overflow:hidden;">
@@ -490,16 +344,25 @@ export async function sendOrderConfirmation(
 
         <!-- HEADER -->
         <div style="background:#ff7f2a;color:#fff;text-align:center;padding:16px 0;font-size:24px;font-weight:bold;border-radius:30px;margin:0 40px;">
-          COMANDA PLASATA CU SUCCES
+          COMANDA PLASATĂ CU SUCCES
         </div>
 
         <!-- MESAJ -->
         <div style="padding:32px 32px 0 32px;font-size:16px;color:#222;">
           <p>Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii. Puteți verifica statusul comenzii dumneavoastră prin conectare la contul personal.</p>
           <p>Dacă aveți întrebări referitoare la comanda dumneavoastră, ne puteți trimite email la <b>contact@screenshield.ro</b> sau pe WhatsApp la <b>07xx xxx xxx</b>.</p>
+          ${
+            order.oblioInvoiceUrl
+              ? `<p><strong>Factura fiscală:</strong> ${
+                  attachments.length > 0
+                    ? "Este atașată acestui email."
+                    : `<a href="${order.oblioInvoiceUrl}" style="color:#ff7f2a;text-decoration:underline;">Click aici pentru a descărca factura</a>`
+                }</p>`
+              : ""
+          }
         </div>
 
-        <!-- DETALII COMANDA -->
+        <!-- DETALII COMANDĂ -->
         <div style="background:#ff7f2a;color:#fff;text-align:center;padding:12px 0;font-size:20px;font-weight:bold;border-radius:30px;margin:32px 40px 0 40px;">
           DETALII COMANDĂ
         </div>
@@ -507,25 +370,67 @@ export async function sendOrderConfirmation(
           <p><b>Număr de comandă:</b> ${order.orderNumber}</p>
           <p><b>Detalii Comandă:</b></p>
           <ul style="padding-left:20px;">
-            ${order.items.map(item => `<li>${item.quantity}x ${item.product.name} (${item.size}) - ${item.price.toFixed(2)} RON</li>`).join('')}
+            ${order.items
+              .map(
+                (item) => `
+              <li>${item.product.name} x ${item.quantity} - ${item.price} RON</li>
+            `
+              )
+              .join("")}
           </ul>
-          <p><b>Suma:</b> ${order.total.toFixed(2)} RON</p>
-          <p><b>Adresă de livrare:</b> ${order.details.street} ${order.details.streetNumber || ''}${order.details.block ? ', Bloc ' + order.details.block : ''}${order.details.floor ? ', Etaj ' + order.details.floor : ''}${order.details.apartment ? ', Ap ' + order.details.apartment : ''}, ${order.details.city}, ${order.details.county}, ${order.details.postalCode}, ${order.details.country}</p>
+          <p><b>Total:</b> ${order.total} RON</p>
+          <p><b>Metoda de plată:</b> ${
+            order.paymentType === "card" ? "Card bancar" : "Ramburs"
+          }</p>
+          <p><b>Adresa de livrare:</b><br>
+            ${order.details.fullName}<br>
+            ${order.details.street}<br>
+            ${order.details.city}, ${order.details.county}<br>
+            ${order.details.postalCode || ""}<br>
+            ${order.details.phoneNumber}
+          </p>
         </div>
       </div>
     `;
 
-    return await sendEmail(order.details.email, "Order Confirmation", html, [
-      {
-        filename: `invoice-${order.id}.pdf`,
-        content: pdfBuffer,
-      },
-    ]);
-  } catch (error: unknown) {
-    console.error("Error sending order confirmation:", error);
+    const emailData = {
+      from: "Screen Shield <no-reply@screenshield.ro>",
+      to: order.details.email,
+      subject: `Confirmare comandă #${order.orderNumber} - Screen Shield`,
+      html,
+      text: `Confirmare comandă #${order.orderNumber}
+
+Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii.
+
+${order.oblioInvoiceUrl ? `Factura fiscală: ${order.oblioInvoiceUrl}` : ""}
+
+DETALII COMANDĂ:
+Număr comandă: ${order.orderNumber}
+Total: ${order.total} RON
+Metoda de plată: ${order.paymentType === "card" ? "Card bancar" : "Ramburs"}
+
+Adresa de livrare:
+${order.details.fullName}
+${order.details.street}
+${order.details.city}, ${order.details.county}
+${order.details.postalCode || ""}
+${order.details.phoneNumber}
+
+Pentru orice întrebări, ne puteți contacta la contact@screenshield.ro sau pe WhatsApp.`,
+      attachments,
+    };
+
+    const response = await resend.emails.send(emailData);
+
+    return {
+      success: true,
+      data: response,
+    };
+  } catch (error) {
+    console.error("Error sending order confirmation email:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Failed to send order confirmation email",
     };
   }
 }

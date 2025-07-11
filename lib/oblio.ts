@@ -44,7 +44,7 @@ export interface OblioInvoiceData {
     um: string;
   }[];
   total: number;
-  orderNumber: string;
+  orderNumber: string | null;
   orderDate: string;
   note?: string;
 }
@@ -189,23 +189,38 @@ export async function generateOblioInvoice(invoiceData: OblioInvoiceData & { isC
  */
 export async function downloadOblioInvoice(invoiceId: string) {
   try {
+    console.log('=== ÎNCEPERE DESCĂRCARE FACTURĂ OBLIO ===');
     const oblioApi = getOblioApi();
+    
+    // Generăm token-ul de acces
+    console.log('Generăm token de acces pentru Oblio API...');
+    await oblioApi.getAccessToken();
+    console.log('Token de acces generat cu succes');
+    
+    console.log(`Descărcăm factura cu ID: ${invoiceId}`);
     const response = await oblioApi.getInvoice({
       id: invoiceId
     });
 
-    if (response.status === 'success') {
+    console.log('Răspuns de la Oblio:', JSON.stringify(response, null, 2));
+
+    if (response.status === 200 || response.status === 'success') {
+      console.log('Factură descărcată cu succes');
+      console.log('=== FINALIZARE DESCĂRCARE FACTURĂ OBLIO ===');
       return {
         success: true,
-        pdfUrl: response.data.pdf,
-        xmlUrl: response.data.xml
+        pdfUrl: response.data.pdf || response.data.pdfUrl,
+        xmlUrl: response.data.xml || response.data.xmlUrl
       };
     } else {
-      throw new Error(`Failed to get invoice: ${response.message}`);
+      throw new Error(`Failed to get invoice: ${response.message || response.statusMessage}`);
     }
 
   } catch (error) {
+    console.error('=== EROARE LA DESCĂRCAREA FACTURII OBLIO ===');
     console.error('Error downloading Oblio invoice:', error);
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('=== SFÂRȘIT EROARE ===');
     throw error;
   }
 }

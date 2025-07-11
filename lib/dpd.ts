@@ -219,6 +219,16 @@ interface DPDTrackingResponse {
   parcels: DPDTrackingParcelResponse[];
 }
 
+function cleanStreetName(street: string): string {
+  // Remove "Strada" or "strada" from the beginning and trim spaces
+  const cleanedStreet = street
+    .replace(/^(strada\s+|str\.\s+|str\s+)/i, '')
+    .trim()
+    .toUpperCase();
+  
+  return cleanedStreet;
+}
+
 class DPDClient {
   private config: {
     username: string;
@@ -279,7 +289,9 @@ class DPDClient {
   }
 
   async findStreet(siteId: number, name: string): Promise<number> {
-    const response = await this.makeRequest<any>('/location/street', { siteId, name });
+    const cleanedStreetName = cleanStreetName(name);
+    console.log('🔍 Finding street with cleaned name:', { original: name, cleaned: cleanedStreetName });
+    const response = await this.makeRequest<any>('/location/street', { siteId, name: cleanedStreetName });
     return response.streets[0]?.id;
   }
 

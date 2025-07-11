@@ -60,6 +60,7 @@ type Order = {
     type: string;
     value: number;
   }[];
+  invoiceUrl: string | null;
 };
 
 function ProductCard({ item }: { item: OrderItem }) {
@@ -168,28 +169,23 @@ export default function OrdersContent({ userId }: { userId: string }) {
     fetchOrders();
   }, [userId]);
 
-  const handleDownloadInvoice = async (orderId: string) => {
+  const handleDownloadInvoice = async (
+    orderId: string,
+    invoiceUrl: string | null
+  ) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/invoice`);
-      if (!response.ok) {
-        throw new Error("Nu am putut descărca factura");
+      if (!invoiceUrl) {
+        throw new Error("URL-ul facturii nu este disponibil");
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `factura-${orderId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // Deschidem URL-ul într-o fereastră nouă
+      window.open(invoiceUrl, "_blank");
     } catch (error) {
-      console.error("Error downloading invoice:", error);
+      console.error("Error opening invoice:", error);
       toast({
         title: "Eroare",
         description:
-          "Nu am putut descărca factura. Vă rugăm să încercați din nou.",
+          "Nu am putut deschide factura. Vă rugăm să încercați din nou.",
         variant: "destructive",
       });
     }
@@ -361,10 +357,14 @@ export default function OrdersContent({ userId }: { userId: string }) {
                         <p className="text-sm">{order.details.email}</p>
                         <p className="text-sm">{order.details.phoneNumber}</p>
                         <p className="text-sm">
-                          {order.details.street} {order.details.streetNumber || ''}
-                          {order.details.block && `, Bloc ${order.details.block}`}
-                          {order.details.floor && `, Etaj ${order.details.floor}`}
-                          {order.details.apartment && `, Ap ${order.details.apartment}`}
+                          {order.details.street}{" "}
+                          {order.details.streetNumber || ""}
+                          {order.details.block &&
+                            `, Bloc ${order.details.block}`}
+                          {order.details.floor &&
+                            `, Etaj ${order.details.floor}`}
+                          {order.details.apartment &&
+                            `, Ap ${order.details.apartment}`}
                         </p>
                         <p className="text-sm">
                           {order.details.city}, {order.details.county}{" "}
@@ -463,7 +463,9 @@ export default function OrdersContent({ userId }: { userId: string }) {
 
                   <div className="flex justify-end">
                     <Button
-                      onClick={() => handleDownloadInvoice(order.id)}
+                      onClick={() =>
+                        handleDownloadInvoice(order.id, order.invoiceUrl)
+                      }
                       className="flex items-center gap-2"
                     >
                       <Download className="h-4 w-4" />
