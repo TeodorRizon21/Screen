@@ -33,7 +33,7 @@ interface OrderDetails {
   email: string;
   phoneNumber: string;
   street: string;
-  streetNumber?: string;
+  streetNumber?: string | null;
   block?: string | null;
   floor?: string | null;
   apartment?: string | null;
@@ -65,7 +65,7 @@ interface OrderWithItems {
   total: number;
   paymentStatus: string;
   orderStatus: string;
-  paymentType: string;
+  paymentType: string | null;
   courier: string | null;
   awb: string | null;
   createdAt: Date;
@@ -76,6 +76,7 @@ interface OrderWithItems {
     product: OrderProduct;
   })[];
   details: OrderDetails;
+  oblioInvoiceId?: string | null;
   oblioInvoiceUrl?: string | null;
   oblioInvoiceNumber?: string | null;
 }
@@ -230,6 +231,11 @@ export async function sendAdminNotification(
           },
         },
         details: true,
+        discountCodes: {
+          include: {
+            discountCode: true,
+          },
+        },
       },
     });
 
@@ -244,40 +250,147 @@ export async function sendAdminNotification(
       return { success: false, error: "No admin emails configured" };
     }
 
-    const itemsList = completeOrder.items
-      .map(
-        (item) =>
-          `<li>${item.quantity}x ${item.product.name} (${
-            item.size
-          }) - $${item.price.toFixed(2)}</li>`
-      )
-      .join("");
+    // Calculăm totalul cu reduceri
+    const subtotal = completeOrder.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discountTotal = completeOrder.discountCodes.reduce((sum, dc) => {
+      if (dc.discountCode.type === 'percentage') {
+        return sum + (subtotal * dc.discountCode.value / 100);
+      } else {
+        return sum + dc.discountCode.value;
+      }
+    }, 0);
+    const finalTotal = subtotal - discountTotal;
 
     const html = `
-      <h1>New Order Received</h1>
-      <p>Order ID: ${completeOrder.id}</p>
-      <p>Total: $${completeOrder.total.toFixed(2)}</p>
-      <p>Customer: ${completeOrder.details.fullName}</p>
-      <p>Email: ${completeOrder.details.email}</p>
-      <p>Phone: ${completeOrder.details.phoneNumber}</p>
-      <h2>Items:</h2>
-      <ul>
-        ${itemsList}
-      </ul>
-      <h2>Shipping Address:</h2>
-      <p>${completeOrder.details.street}</p>
-      <p>${completeOrder.details.city}, ${completeOrder.details.county} ${
-      completeOrder.details.postalCode
-    }</p>
-      <p>${completeOrder.details.country}</p>
-      <p><a href="${
-        process.env.NEXT_PUBLIC_APP_URL
-      }/admin/orders">View Order Details</a></p>
+      <div style="max-width:700px;margin:0 auto;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+        <!-- HEADER -->
+        <div style="background:linear-gradient(135deg,#dc3545 0%,#c82333 100%);padding:30px 20px;text-align:center;">
+          <h1 style="color:#fff;font-size:28px;font-weight:700;margin:0;text-shadow:0 2px 4px rgba(0,0,0,0.2);">
+            🛒 COMANDA NOUĂ PRIMITĂ
+          </h1>
+          <p style="color:#fff;font-size:16px;margin:10px 0 0 0;opacity:0.9;">
+            O nouă comandă a fost plasată pe site-ul tău
+          </p>
+        </div>
+
+        <!-- INFO RAPIDĂ -->
+        <div style="padding:30px;background:#fff;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px;">
+            <div style="background:#f8f9fa;border-radius:8px;padding:20px;text-align:center;">
+              <h3 style="color:#dc3545;margin:0 0 10px 0;font-size:18px;">🔢 Număr Comandă</h3>
+              <p style="font-size:24px;font-weight:700;color:#333;margin:0;">${completeOrder.orderNumber}</p>
+            </div>
+            <div style="background:#f8f9fa;border-radius:8px;padding:20px;text-align:center;">
+              <h3 style="color:#dc3545;margin:0 0 10px 0;font-size:18px;">💰 Total Comandă</h3>
+              <p style="font-size:24px;font-weight:700;color:#333;margin:0;">${finalTotal.toLocaleString('ro-RO')} RON</p>
+            </div>
+          </div>
+
+          <!-- CLIENT -->
+          <div style="background:#e8f5e8;border:1px solid #28a745;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <h3 style="color:#155724;margin:0 0 15px 0;font-size:18px;">👤 Informații Client</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+              <div>
+                <p style="margin:0 0 5px 0;color:#155724;"><strong>Nume:</strong> ${completeOrder.details.fullName}</p>
+                <p style="margin:0 0 5px 0;color:#155724;"><strong>Email:</strong> ${completeOrder.details.email}</p>
+                <p style="margin:0;color:#155724;"><strong>Telefon:</strong> ${completeOrder.details.phoneNumber}</p>
+              </div>
+              <div>
+                <p style="margin:0 0 5px 0;color:#155724;"><strong>Metoda plată:</strong> ${completeOrder.paymentType === 'card' ? '💳 Card bancar' : '💵 Ramburs'}</p>
+                <p style="margin:0 0 5px 0;color:#155724;"><strong>Status plată:</strong> ${completeOrder.paymentStatus === 'COMPLETED' ? '✅ Plătit' : '⏳ În așteptare'}</p>
+                <p style="margin:0;color:#155724;"><strong>Data comandă:</strong> ${new Date(completeOrder.createdAt).toLocaleString('ro-RO')}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- ADRESĂ LIVRARE -->
+          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <h3 style="color:#856404;margin:0 0 15px 0;font-size:18px;">📍 Adresa de Livrare</h3>
+            <p style="margin:0 0 5px 0;color:#856404;">${completeOrder.details.street}${completeOrder.details.streetNumber ? ` ${completeOrder.details.streetNumber}` : ''}</p>
+            <p style="margin:0 0 5px 0;color:#856404;">${completeOrder.details.city}, ${completeOrder.details.county}</p>
+            <p style="margin:0 0 5px 0;color:#856404;">${completeOrder.details.postalCode || ''}</p>
+            <p style="margin:0;color:#856404;">${completeOrder.details.country}</p>
+          </div>
+
+          <!-- PRODUSE -->
+          <div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <h3 style="color:#333;margin:0 0 15px 0;font-size:18px;">🛍️ Produse Comandate</h3>
+            ${completeOrder.items
+              .map(
+                (item) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f1f3f4;">
+                <div style="flex:1;">
+                  <p style="font-weight:600;color:#333;margin:0 0 5px 0;font-size:15px;">${item.product.name}</p>
+                  <p style="color:#666;margin:0;font-size:13px;">Mărime: ${item.size} | Cantitate: ${item.quantity}</p>
+                </div>
+                <div style="text-align:right;">
+                  <p style="font-weight:600;color:#333;margin:0;font-size:15px;">${(item.price * item.quantity).toLocaleString('ro-RO')} RON</p>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+
+          <!-- REDUCERI -->
+          ${completeOrder.discountCodes.length > 0 ? `
+          <div style="background:#d1ecf1;border:1px solid #bee5eb;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <h3 style="color:#0c5460;margin:0 0 15px 0;font-size:18px;">🎫 Coduri de Reducere Aplicate</h3>
+            ${completeOrder.discountCodes
+              .map(
+                (dc) => `
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
+                <span style="color:#0c5460;font-weight:600;">${dc.discountCode.code}</span>
+                <span style="color:#0c5460;">-${dc.discountCode.value}${dc.discountCode.type === 'percentage' ? '%' : ' RON'}</span>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+          ` : ''}
+
+          <!-- SUMAR FINANCIAR -->
+          <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin-bottom:25px;">
+            <h3 style="color:#333;margin:0 0 15px 0;font-size:18px;">💰 Sumar Financiar</h3>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e9ecef;">
+              <span style="color:#666;">Subtotal:</span>
+              <span style="color:#333;font-weight:600;">${subtotal.toLocaleString('ro-RO')} RON</span>
+            </div>
+            ${discountTotal > 0 ? `
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e9ecef;">
+              <span style="color:#666;">Reduceri:</span>
+              <span style="color:#dc3545;font-weight:600;">-${discountTotal.toLocaleString('ro-RO')} RON</span>
+            </div>
+            ` : ''}
+            <div style="display:flex;justify-content:space-between;padding:8px 0;">
+              <span style="color:#333;font-weight:600;font-size:16px;">Total:</span>
+              <span style="color:#dc3545;font-weight:700;font-size:18px;">${finalTotal.toLocaleString('ro-RO')} RON</span>
+            </div>
+          </div>
+
+          <!-- ACȚIUNI -->
+          <div style="text-align:center;padding:20px 0;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders" style="display:inline-block;background:#dc3545;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:0 10px;">
+              👁️ Vezi Detalii Comandă
+            </a>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders" style="display:inline-block;background:#28a745;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:0 10px;">
+              ✅ Finalizează Comanda
+            </a>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="background:#333;color:#fff;text-align:center;padding:20px;">
+          <p style="margin:0;font-size:14px;opacity:0.8;">
+            Această notificare a fost trimisă automat de sistemul Screen Shield.
+          </p>
+        </div>
+      </div>
     `;
 
     const results = await Promise.allSettled(
       adminEmails.map((admin) =>
-        sendEmail(admin.email, "New Order Notification", html)
+        sendEmail(admin.email, `🛒 Comandă nouă #${completeOrder.orderNumber} - ${completeOrder.details.fullName}`, html)
       )
     );
 
@@ -290,10 +403,10 @@ export async function sendAdminNotification(
       results,
     };
   } catch (error) {
-    console.error("Error sending admin notifications:", error);
+    console.error("Error sending admin notification:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Failed to send admin notification",
     };
   }
 }
@@ -311,84 +424,172 @@ export async function sendOrderConfirmation(
     const attachments: EmailAttachment[] = [];
 
     // Descărcăm și atașăm factura Oblio
-    if (order.oblioInvoiceUrl) {
+    if (order.oblioInvoiceId) {
       try {
-        console.log("Descărcăm factura Oblio de la:", order.oblioInvoiceUrl);
-        const oblioResponse = await fetch(order.oblioInvoiceUrl);
-        if (!oblioResponse.ok) {
-          console.error(
-            `Failed to download Oblio invoice: ${oblioResponse.statusText}`
-          );
-          // Nu aruncăm eroare aici, continuăm cu link-ul
-        } else {
-          const oblioBuffer = await oblioResponse.arrayBuffer();
+        console.log("Descărcăm factura Oblio pentru comanda:", order.id);
+        
+        // Încercăm să descărcăm din API-ul intern
+        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/orders/${order.id}/invoice`;
+        console.log("Apelăm API-ul:", apiUrl);
+        
+        const apiResponse = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (apiResponse.ok) {
+          const pdfBuffer = await apiResponse.arrayBuffer();
           attachments.push({
-            filename: `factura-${order.oblioInvoiceNumber || order.id}.pdf`,
-            content: Buffer.from(oblioBuffer),
+            filename: `factura-${order.oblioInvoiceNumber || order.orderNumber}.pdf`,
+            content: Buffer.from(pdfBuffer),
           });
-          console.log("Factura Oblio atașată cu succes");
+          console.log("Factura Oblio atașată cu succes din API");
+        } else {
+          console.error("Eroare la descărcarea din API:", apiResponse.statusText);
+          
+          // Fallback la URL-ul direct
+          if (order.oblioInvoiceUrl) {
+            console.log("Încercăm fallback la URL-ul direct:", order.oblioInvoiceUrl);
+            const oblioResponse = await fetch(order.oblioInvoiceUrl);
+            if (oblioResponse.ok) {
+              const oblioBuffer = await oblioResponse.arrayBuffer();
+              attachments.push({
+                filename: `factura-${order.oblioInvoiceNumber || order.orderNumber}.pdf`,
+                content: Buffer.from(oblioBuffer),
+              });
+              console.log("Factura Oblio atașată cu succes din URL direct");
+            } else {
+              console.error("Eroare și la URL-ul direct:", oblioResponse.statusText);
+            }
+          }
         }
       } catch (error) {
         console.error("Eroare la descărcarea facturii Oblio:", error);
       }
     } else {
-      console.log("Nu există URL pentru factura Oblio");
+      console.log("Nu există ID pentru factura Oblio");
     }
 
     const html = `
-      <div style="max-width:600px;margin:0 auto;font-family:sans-serif;background:#fff;border-radius:10px;overflow:hidden;">
-        <!-- LOGO -->
-        <div style="text-align:center;padding:32px 0 16px 0;">
-          <img src="https://screenshield.ro/logoscreenshield.png" alt="Screen Shield" style="height:60px;">
+      <div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+        <!-- HEADER CU LOGO -->
+        <div style="background:linear-gradient(135deg,#ff7f2a 0%,#ff6b35 100%);padding:40px 20px;text-align:center;">
+          <img src="https://screenshield.ro/logoscreenshield.png" alt="Screen Shield" style="height:70px;margin-bottom:20px;">
+          <h1 style="color:#fff;font-size:28px;font-weight:700;margin:0;text-shadow:0 2px 4px rgba(0,0,0,0.1);">
+            ✅ COMANDA PLASATĂ CU SUCCES
+          </h1>
+          <p style="color:#fff;font-size:16px;margin:10px 0 0 0;opacity:0.9;">
+            Mulțumim pentru încrederea acordată!
+          </p>
         </div>
 
-        <!-- HEADER -->
-        <div style="background:#ff7f2a;color:#fff;text-align:center;padding:16px 0;font-size:24px;font-weight:bold;border-radius:30px;margin:0 40px;">
-          COMANDA PLASATĂ CU SUCCES
-        </div>
+        <!-- MESAJ PRINCIPAL -->
+        <div style="padding:40px 30px 20px 30px;background:#fff;">
+          <div style="background:#f8f9fa;border-left:4px solid #ff7f2a;padding:20px;border-radius:8px;margin-bottom:30px;">
+            <p style="font-size:16px;color:#333;line-height:1.6;margin:0;">
+              <strong>Salut ${order.details.fullName.split(' ')[0]}!</strong><br>
+              Comanda ta a fost procesată cu succes și este în curs de pregătire. 
+              Odată ce coletul este predat la curier, vei primi un email cu numărul de urmărire.
+            </p>
+          </div>
 
-        <!-- MESAJ -->
-        <div style="padding:32px 32px 0 32px;font-size:16px;color:#222;">
-          <p>Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii. Puteți verifica statusul comenzii dumneavoastră prin conectare la contul personal.</p>
-          <p>Dacă aveți întrebări referitoare la comanda dumneavoastră, ne puteți trimite email la <b>contact@screenshield.ro</b> sau pe WhatsApp la <b>07xx xxx xxx</b>.</p>
+          <!-- FACTURA -->
           ${
             order.oblioInvoiceUrl
-              ? `<p><strong>Factura fiscală:</strong> ${
-                  attachments.length > 0
-                    ? "Este atașată acestui email."
-                    : `<a href="${order.oblioInvoiceUrl}" style="color:#ff7f2a;text-decoration:underline;">Click aici pentru a descărca factura</a>`
-                }</p>`
+              ? `<div style="background:#e8f5e8;border:1px solid #28a745;border-radius:8px;padding:20px;margin-bottom:30px;">
+                  <h3 style="color:#155724;margin:0 0 10px 0;font-size:18px;">📄 Factura Fiscală</h3>
+                  <p style="color:#155724;margin:0 0 15px 0;font-size:14px;">
+                    ${attachments.length > 0
+                      ? "Factura este atașată acestui email."
+                      : "Poți descărca factura din link-ul de mai jos."}
+                  </p>
+                  ${
+                    attachments.length === 0
+                      ? `<a href="${order.oblioInvoiceUrl}" style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;">
+                         📥 Descarcă Factura
+                       </a>`
+                      : ""
+                  }
+                </div>`
               : ""
           }
+
+          <!-- CONTACT -->
+          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:20px;margin-bottom:30px;">
+            <h3 style="color:#856404;margin:0 0 10px 0;font-size:18px;">📞 Ai întrebări?</h3>
+            <p style="color:#856404;margin:0;font-size:14px;line-height:1.5;">
+              Ne poți contacta la:<br>
+              <strong>📧 Email:</strong> contact@screenshield.ro<br>
+              <strong>📱 WhatsApp:</strong> +40 123 456 789
+            </p>
+          </div>
         </div>
 
         <!-- DETALII COMANDĂ -->
-        <div style="background:#ff7f2a;color:#fff;text-align:center;padding:12px 0;font-size:20px;font-weight:bold;border-radius:30px;margin:32px 40px 0 40px;">
-          DETALII COMANDĂ
-        </div>
-        <div style="padding:24px 32px 32px 32px;font-size:16px;color:#222;">
-          <p><b>Număr de comandă:</b> ${order.orderNumber}</p>
-          <p><b>Detalii Comandă:</b></p>
-          <ul style="padding-left:20px;">
+        <div style="background:#f8f9fa;padding:30px;">
+          <h2 style="color:#333;font-size:22px;margin:0 0 25px 0;text-align:center;font-weight:600;">
+            📋 DETALII COMANDĂ
+          </h2>
+          
+          <!-- NUMĂR COMANDĂ -->
+          <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;border:1px solid #e9ecef;">
+            <h3 style="color:#ff7f2a;margin:0 0 15px 0;font-size:18px;">🔢 Număr Comandă</h3>
+            <p style="font-size:24px;font-weight:700;color:#333;margin:0;text-align:center;">${order.orderNumber}</p>
+          </div>
+
+          <!-- PRODUSE -->
+          <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;border:1px solid #e9ecef;">
+            <h3 style="color:#ff7f2a;margin:0 0 15px 0;font-size:18px;">🛍️ Produse Comandate</h3>
             ${order.items
               .map(
                 (item) => `
-              <li>${item.product.name} x ${item.quantity} - ${item.price} RON</li>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f1f3f4;">
+                <div style="flex:1;">
+                  <p style="font-weight:600;color:#333;margin:0 0 5px 0;font-size:15px;">${item.product.name}</p>
+                  <p style="color:#666;margin:0;font-size:13px;">Mărime: ${item.size} | Cantitate: ${item.quantity}</p>
+                </div>
+                <div style="text-align:right;">
+                  <p style="font-weight:600;color:#333;margin:0;font-size:15px;">${item.price.toLocaleString('ro-RO')} RON</p>
+                </div>
+              </div>
             `
               )
               .join("")}
-          </ul>
-          <p><b>Total:</b> ${order.total} RON</p>
-          <p><b>Metoda de plată:</b> ${
-            order.paymentType === "card" ? "Card bancar" : "Ramburs"
-          }</p>
-          <p><b>Adresa de livrare:</b><br>
-            ${order.details.fullName}<br>
-            ${order.details.street}<br>
-            ${order.details.city}, ${order.details.county}<br>
-            ${order.details.postalCode || ""}<br>
-            ${order.details.phoneNumber}
-          </p>
+          </div>
+
+          <!-- TOTAL -->
+          <div style="background:#ff7f2a;color:#fff;border-radius:8px;padding:20px;margin-bottom:20px;text-align:center;">
+            <h3 style="margin:0 0 10px 0;font-size:18px;">💰 Total Comandă</h3>
+            <p style="font-size:28px;font-weight:700;margin:0;">${order.total.toLocaleString('ro-RO')} RON</p>
+            <p style="margin:10px 0 0 0;font-size:14px;opacity:0.9;">
+              Metoda de plată: ${order.paymentType === "card" ? "💳 Card bancar" : "💵 Ramburs"}
+            </p>
+          </div>
+
+          <!-- ADRESĂ LIVRARE -->
+          <div style="background:#fff;border-radius:8px;padding:20px;border:1px solid #e9ecef;">
+            <h3 style="color:#ff7f2a;margin:0 0 15px 0;font-size:18px;">📍 Adresa de Livrare</h3>
+            <div style="background:#f8f9fa;border-radius:6px;padding:15px;">
+              <p style="font-weight:600;color:#333;margin:0 0 8px 0;font-size:15px;">${order.details.fullName}</p>
+              <p style="color:#666;margin:0 0 5px 0;font-size:14px;">${order.details.street}${order.details.streetNumber ? ` ${order.details.streetNumber}` : ''}</p>
+              <p style="color:#666;margin:0 0 5px 0;font-size:14px;">${order.details.city}, ${order.details.county}</p>
+              <p style="color:#666;margin:0 0 5px 0;font-size:14px;">${order.details.postalCode || ''}</p>
+              <p style="color:#666;margin:0;font-size:14px;">📞 ${order.details.phoneNumber}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="background:#333;color:#fff;text-align:center;padding:30px 20px;">
+          <p style="margin:0 0 10px 0;font-size:16px;font-weight:600;">Screen Shield</p>
+          <p style="margin:0 0 15px 0;font-size:14px;opacity:0.8;">Protejăm mașinile tale cu pasiune</p>
+          <div style="border-top:1px solid #555;padding-top:15px;">
+            <p style="margin:0;font-size:12px;opacity:0.6;">
+              © 2024 Screen Shield. Toate drepturile rezervate.
+            </p>
+          </div>
         </div>
       </div>
     `;
@@ -398,25 +599,34 @@ export async function sendOrderConfirmation(
       to: order.details.email,
       subject: `Confirmare comandă #${order.orderNumber} - Screen Shield`,
       html,
-      text: `Confirmare comandă #${order.orderNumber}
+      text: `✅ Confirmare comandă #${order.orderNumber} - Screen Shield
 
-Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii.
+Salut ${order.details.fullName.split(' ')[0]}!
 
-${order.oblioInvoiceUrl ? `Factura fiscală: ${order.oblioInvoiceUrl}` : ""}
+Mulțumim pentru comanda ta! Comanda a fost procesată cu succes și este în curs de pregătire.
 
-DETALII COMANDĂ:
-Număr comandă: ${order.orderNumber}
-Total: ${order.total} RON
-Metoda de plată: ${order.paymentType === "card" ? "Card bancar" : "Ramburs"}
+${order.oblioInvoiceUrl ? `📄 Factura fiscală: ${order.oblioInvoiceUrl}` : ""}
 
-Adresa de livrare:
+📋 DETALII COMANDĂ:
+🔢 Număr comandă: ${order.orderNumber}
+💰 Total: ${order.total.toLocaleString('ro-RO')} RON
+💳 Metoda de plată: ${order.paymentType === "card" ? "Card bancar" : "Ramburs"}
+
+📍 Adresa de livrare:
 ${order.details.fullName}
-${order.details.street}
+${order.details.street}${order.details.streetNumber ? ` ${order.details.streetNumber}` : ''}
 ${order.details.city}, ${order.details.county}
 ${order.details.postalCode || ""}
-${order.details.phoneNumber}
+📞 ${order.details.phoneNumber}
 
-Pentru orice întrebări, ne puteți contacta la contact@screenshield.ro sau pe WhatsApp.`,
+📞 Pentru întrebări:
+📧 Email: contact@screenshield.ro
+📱 WhatsApp: +40 123 456 789
+
+Odată ce coletul este predat la curier, vei primi un email cu numărul de urmărire.
+
+Cu drag,
+Echipa Screen Shield`,
       attachments,
     };
 

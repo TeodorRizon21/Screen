@@ -39,10 +39,15 @@ declare module '@obliosoftware/oblioapi' {
   }
 
   export interface OblioInvoice {
-    id: string;
-    numar: string;
-    pdf: string;
-    xml: string;
+    id?: string;
+    number?: string;
+    numar?: string;
+    seriesName?: string;
+    link?: string;
+    einvoice?: string;
+    pdf?: string;
+    xml?: string;
+    total?: string;
   }
 
   export interface OblioCompany {

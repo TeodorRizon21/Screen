@@ -161,12 +161,21 @@ export async function generateOblioInvoice(invoiceData: OblioInvoiceData & { isC
     console.log('Răspunsul de la Oblio API:', JSON.stringify(response, null, 2));
     
     if (response.status === 200 && response.data) {
+      // Extragem ID-ul din URL-ul link-ului dacă nu există în răspuns
+      let invoiceId = response.data.id || response.data._id;
+      if (!invoiceId && response.data.link) {
+        const urlMatch = response.data.link.match(/id=(\d+)/);
+        if (urlMatch) {
+          invoiceId = urlMatch[1];
+        }
+      }
+      
       const result = {
         success: true,
-        invoiceId: response.data.id || response.data._id,
+        invoiceId: invoiceId,
         invoiceNumber: response.data.number || response.data.numar,
-        pdfUrl: response.data.pdf || response.data.pdfUrl,
-        xmlUrl: response.data.xml || response.data.xmlUrl
+        pdfUrl: response.data.link || response.data.pdf || response.data.pdfUrl,
+        xmlUrl: response.data.einvoice || response.data.xml || response.data.xmlUrl
       };
       console.log('Factură generată cu succes:', result);
       console.log('=== FINALIZARE GENERARE FACTURĂ OBLIO ===');
@@ -209,8 +218,8 @@ export async function downloadOblioInvoice(invoiceId: string) {
       console.log('=== FINALIZARE DESCĂRCARE FACTURĂ OBLIO ===');
       return {
         success: true,
-        pdfUrl: response.data.pdf || response.data.pdfUrl,
-        xmlUrl: response.data.xml || response.data.xmlUrl
+        pdfUrl: response.data.link || response.data.pdf || response.data.pdfUrl,
+        xmlUrl: response.data.einvoice || response.data.xml || response.data.xmlUrl
       };
     } else {
       throw new Error(`Failed to get invoice: ${response.message || response.statusMessage}`);

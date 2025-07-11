@@ -124,15 +124,6 @@ function OrderCard({
             >
               <Download className="h-4 w-4" />
             </Button>
-            {order.oblioInvoiceId ? (
-              <Badge variant="secondary" className="text-xs">
-                Factură: {order.oblioInvoiceNumber}
-              </Badge>
-            ) : (
-              <Badge variant="destructive" className="text-xs">
-                Fără factură
-              </Badge>
-            )}
             <Button
               variant="outline"
               size="sm"
@@ -765,53 +756,65 @@ export default function AdminOrderList() {
 
   const handleDownloadInvoice = async (orderId: string) => {
     try {
-      // Verificăm dacă există factură Oblio
+      console.log("=== ÎNCEPERE DESCĂRCARE FACTURĂ ===");
+      console.log("Order ID:", orderId);
+      
+      // Verificăm dacă există factură
       const order = orders.find(o => o.id === orderId);
+      console.log("Order găsit:", order);
+      console.log("OblioInvoiceId:", order?.oblioInvoiceId);
+      
       if (!order?.oblioInvoiceId) {
+        console.log("Nu există factură pentru această comandă");
         toast({
           title: "Eroare",
-          description: "Nu există factură Oblio pentru această comandă. Generează mai întâi factura.",
+          description: "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
           variant: "destructive",
         });
         return;
       }
 
-      const response = await fetch("/api/admin/oblio/download-invoice", {
-        method: "POST",
+      console.log("Apelăm API-ul pentru descărcare...");
+      // Descărcăm factura din Oblio
+      const response = await fetch("/api/orders/" + orderId + "/invoice", {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ orderId }),
       });
+
+      console.log("Răspuns API:", response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Eroare API:", errorData);
         throw new Error(errorData.error || "Nu am putut descărca factura");
       }
 
-      const result = await response.json();
+      console.log("Descărcăm blob-ul...");
+      // Descărcăm PDF-ul
+      const blob = await response.blob();
+      console.log("Blob descărcat:", blob.size, "bytes");
       
-      // Descărcăm PDF-ul din Oblio
-      if (result.pdfUrl) {
-        const pdfResponse = await fetch(result.pdfUrl);
-        const blob = await pdfResponse.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `factura-oblio-${result.invoiceNumber}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else {
-        throw new Error("URL-ul PDF-ului nu este disponibil");
-      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `factura-${order.orderNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      console.log("Factura descărcată cu succes!");
+      console.log("=== FINALIZARE DESCĂRCARE FACTURĂ ===");
     } catch (error) {
-      console.error("Error downloading Oblio invoice:", error);
+      console.error("=== EROARE LA DESCĂRCAREA FACTURII ===");
+      console.error("Error downloading invoice:", error);
+      console.error("=== SFÂRȘIT EROARE ===");
       toast({
         title: "Eroare",
         description:
-          "Nu am putut descărca factura Oblio. Vă rugăm să încercați din nou.",
+          "Nu am putut descărca factura. Vă rugăm să încercați din nou.",
         variant: "destructive",
       });
     }

@@ -77,7 +77,7 @@ export default async function CheckoutSuccessPage({
       if (order) {
         // Dacă comanda există deja, o afișăm direct
         return (
-          <SuccessContent orderId={order.id} paymentType={order.paymentType} />
+          <SuccessContent orderId={order.id} paymentType={order.paymentType || 'unknown'} />
         );
       }
 
@@ -251,16 +251,9 @@ export default async function CheckoutSuccessPage({
         // Nu întrerupem procesul dacă factura nu se poate genera
       }
 
-      // Send emails only after successful order creation
-      try {
-        await Promise.all([
-          sendAdminNotification(order as OrderWithItems),
-          sendOrderConfirmation(order as OrderWithItems),
-        ]);
-      } catch (emailError) {
-        console.error("Error sending emails:", emailError);
-        // Don't throw the error as the order was still created successfully
-      }
+      // Pentru plățile cu cardul, emailurile se trimit din webhook-ul Stripe
+      // Nu trimitem emailuri aici pentru a evita duplicarea
+      console.log("Comanda cu card creată - emailurile se vor trimite din webhook-ul Stripe");
     } else if (orderId) {
       // For cash on delivery orders
       order = await prisma.$transaction(
@@ -385,6 +378,7 @@ export default async function CheckoutSuccessPage({
               data: {
                 oblioInvoiceId: invoiceResult.invoiceId,
                 oblioInvoiceNumber: invoiceResult.invoiceNumber,
+                oblioInvoiceUrl: invoiceResult.pdfUrl,
               },
             });
 
@@ -407,10 +401,10 @@ export default async function CheckoutSuccessPage({
 
           // Send emails only after confirming the order exists
           try {
-            await Promise.all([
-              sendAdminNotification(existingOrder),
-              sendOrderConfirmation(existingOrder),
-            ]);
+            // Trimitem notificare către admin
+            await sendAdminNotification(existingOrder);
+            // Trimitem confirmare către client
+            await sendOrderConfirmation(existingOrder);
           } catch (emailError) {
             console.error("Error sending emails:", emailError);
             // Don't throw the error as the order was still created successfully
@@ -426,7 +420,7 @@ export default async function CheckoutSuccessPage({
     }
 
     return (
-      <SuccessContent orderId={order.id} paymentType={order.paymentType} />
+      <SuccessContent orderId={order.id} paymentType={order.paymentType || 'unknown'} />
     );
   } catch (error) {
     console.error("Error processing order:", error);

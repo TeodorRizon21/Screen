@@ -174,18 +174,46 @@ export default function OrdersContent({ userId }: { userId: string }) {
     invoiceUrl: string | null
   ) => {
     try {
-      if (!invoiceUrl) {
-        throw new Error("URL-ul facturii nu este disponibil");
+      // Verificăm dacă există factură
+      const order = orders.find(o => o.id === orderId);
+      if (!order?.invoiceUrl) {
+        toast({
+          title: "Eroare",
+          description: "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      // Deschidem URL-ul într-o fereastră nouă
-      window.open(invoiceUrl, "_blank");
+      // Descărcăm factura din Oblio
+      const response = await fetch("/api/orders/" + orderId + "/invoice", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Nu am putut descărca factura");
+      }
+
+      // Descărcăm PDF-ul
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `factura-${order.orderNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
-      console.error("Error opening invoice:", error);
+      console.error("Error downloading invoice:", error);
       toast({
         title: "Eroare",
         description:
-          "Nu am putut deschide factura. Vă rugăm să încercați din nou.",
+          "Nu am putut descărca factura. Vă rugăm să încercați din nou.",
         variant: "destructive",
       });
     }
@@ -462,15 +490,21 @@ export default function OrdersContent({ userId }: { userId: string }) {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button
-                      onClick={() =>
-                        handleDownloadInvoice(order.id, order.invoiceUrl)
-                      }
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Descarcă Factura
-                    </Button>
+                    {order.invoiceUrl ? (
+                      <Button
+                        onClick={() =>
+                          handleDownloadInvoice(order.id, order.invoiceUrl)
+                        }
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="h-4 w-4" />
+                        Descarcă Factura
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        Factura va fi disponibilă în curând
+                      </p>
+                    )}
                   </div>
                 </div>
               </AccordionContent>

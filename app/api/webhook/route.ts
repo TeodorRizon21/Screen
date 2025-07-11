@@ -178,10 +178,10 @@ export async function POST(req: Request) {
 
       // Send notifications
       try {
-        await Promise.all([
-          sendAdminNotification(order),
-          sendOrderConfirmation(order)
-        ]);
+        // Trimitem notificare către admin
+        await sendAdminNotification(order);
+        // Trimitem confirmare către client
+        await sendOrderConfirmation(order);
       } catch (emailError) {
         console.error('Error sending notifications:', emailError);
       }

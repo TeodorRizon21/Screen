@@ -391,8 +391,8 @@ export async function POST(req: Request) {
     }
 
     // Send notifications
-    await sendOrderConfirmation(completeOrder)
     await sendAdminNotification(completeOrder)
+    await sendOrderConfirmation(completeOrder)
 
     return NextResponse.json({ orderId: completeOrder.id })
   } catch (error) {
