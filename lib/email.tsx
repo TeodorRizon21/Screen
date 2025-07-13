@@ -55,7 +55,7 @@ interface OrderProduct {
 }
 
 interface OrderWithItems {
-  orderNumber: any;
+  orderNumber: string;
   id: string;
   userId: string | null;
   total: number;
@@ -540,7 +540,11 @@ export async function sendNewsletterEmail(
   content: string
 ): Promise<void | ErrorResponse> {
   try {
-    // ... existing code ...
+    const result = await sendEmail(email, subject, content);
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to send newsletter email");
+    }
   } catch (error) {
     console.error("Error sending newsletter email:", error);
     return {

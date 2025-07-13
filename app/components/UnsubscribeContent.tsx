@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 export default function UnsubscribeContent() {
   const [isLoading, setIsLoading] = useState(false);
@@ -10,13 +11,16 @@ export default function UnsubscribeContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
 
-  useEffect(() => {
-    if (email) {
-      handleUnsubscribe(email);
+  const handleUnsubscribe = async () => {
+    if (!email) {
+      toast({
+        title: "Eroare",
+        description: "Adresa de email lipsește",
+        variant: "destructive",
+      });
+      return;
     }
-  }, [email]);
 
-  const handleUnsubscribe = async (email: string) => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/newsletter/unsubscribe", {
@@ -67,12 +71,29 @@ export default function UnsubscribeContent() {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Dezabonare de la Newsletter
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          {isLoading
-            ? "Procesăm dezabonarea..."
-            : "Ne pare rău să te vedem plecând! Procesăm dezabonarea ta..."}
+        <p className="mt-2 text-center text-sm text-gray-600 mb-8">
+          Ești sigur că dorești să te dezabonezi de la newsletter?
         </p>
+        {email ? (
+          <div className="text-center">
+            <p className="text-gray-600 mb-6">
+              Adresa de email: <strong>{email}</strong>
+            </p>
+            <Button
+              onClick={handleUnsubscribe}
+              disabled={isLoading}
+              className="w-full max-w-xs mx-auto"
+            >
+              {isLoading ? "Se procesează..." : "Confirmă Dezabonarea"}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-center text-red-600">
+            Link-ul de dezabonare este invalid. Te rugăm să verifici că ai
+            accesat link-ul corect.
+          </p>
+        )}
       </div>
     </div>
   );
-} 
+}

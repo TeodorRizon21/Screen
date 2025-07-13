@@ -19,10 +19,19 @@ export async function POST(request: Request) {
 
     // Check if all emails were sent successfully
     const allSuccessful = results.every(
-      (result) => result.status === "fulfilled"
+      (result) => result.status === "fulfilled" && !("error" in (result.value || {}))
     );
 
     if (!allSuccessful) {
+      // Log failed emails for debugging
+      results.forEach((result, index) => {
+        if (result.status === "rejected" || ("value" in result && "error" in (result.value || {}))) {
+          console.error(`Failed to send to email ${emails[index]}:`, 
+            result.status === "rejected" ? result.reason : result.value
+          );
+        }
+      });
+
       return NextResponse.json(
         { error: "Some emails failed to send" },
         { status: 500 }

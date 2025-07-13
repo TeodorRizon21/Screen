@@ -34,13 +34,19 @@ interface OrderDetails {
   companyCounty?: string | null;
 }
 
-interface OrderWithItems extends Order {
+interface OrderWithItems extends Omit<Order, "orderNumber" | "paymentType"> {
+  orderNumber: NonNullable<Order["orderNumber"]>;
+  paymentType: NonNullable<Order["paymentType"]>;
   items: (OrderItem & {
     product: OrderProduct;
   })[];
   details: OrderDetails;
   discountCodes: Array<{
-    discountCode: any;
+    discountCode: {
+      code: string;
+      type: string;
+      value: number;
+    };
   }>;
 }
 
@@ -71,6 +77,9 @@ export default async function CheckoutSuccessPage({
 
       if (order) {
         // Dacă comanda există deja, o afișăm direct
+        if (!order.paymentType) {
+          throw new Error("Order payment type is missing");
+        }
         return (
           <SuccessContent orderId={order.id} paymentType={order.paymentType} />
         );
@@ -274,10 +283,41 @@ export default async function CheckoutSuccessPage({
 
           // Send emails only after confirming the order exists
           try {
-            await Promise.all([
-              sendAdminNotification(existingOrder),
-              sendOrderConfirmation(existingOrder),
-            ]);
+            // Skip sending emails for "ramburs" orders as they are already sent in create-order
+            if (
+              existingOrder.orderNumber &&
+              existingOrder.paymentType &&
+              existingOrder.paymentType !== "ramburs"
+            ) {
+              // Verificăm că avem toate câmpurile necesare înainte de a trimite emailurile
+              if (
+                existingOrder.items?.every((item) => item.product) &&
+                existingOrder.details
+              ) {
+                const orderWithItems = {
+                  ...existingOrder,
+                  orderNumber: existingOrder.orderNumber,
+                  paymentType: existingOrder.paymentType,
+                  items: existingOrder.items.map((item) => ({
+                    ...item,
+                    product: {
+                      id: item.product.id,
+                      name: item.product.name,
+                      price: item.product.price,
+                      images: item.product.images,
+                      weight: item.product.weight,
+                    },
+                  })),
+                  details: existingOrder.details,
+                  discountCodes: existingOrder.discountCodes || [],
+                } satisfies OrderWithItems;
+
+                await Promise.all([
+                  sendAdminNotification(orderWithItems),
+                  sendOrderConfirmation(orderWithItems),
+                ]);
+              }
+            }
           } catch (emailError) {
             console.error("Error sending emails:", emailError);
             // Don't throw the error as the order was still created successfully
@@ -290,6 +330,10 @@ export default async function CheckoutSuccessPage({
 
     if (!order) {
       throw new Error("Failed to create or find order");
+    }
+
+    if (!order.paymentType) {
+      throw new Error("Order payment type is missing");
     }
 
     return (
