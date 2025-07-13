@@ -23,6 +23,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -51,6 +52,10 @@ type OrderDetails = {
   email: string;
   phoneNumber: string;
   street: string;
+  streetNumber?: string;
+  block?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
   city: string;
   county: string;
   postalCode: string;
@@ -71,6 +76,8 @@ type Order = {
   paymentType: string;
   courier: string | null;
   awb: string | null;
+  oblioInvoiceId?: string | null;
+  oblioInvoiceNumber?: string | null;
   details: OrderDetails;
   discountCodes: {
     code: string;
@@ -84,6 +91,7 @@ interface OrderCardProps {
   onDelete: (id: string) => void;
   onFulfill: (id: string) => void;
   onDownloadInvoice: (id: string) => void;
+
   onCancel: (id: string) => void;
   onRefund: (id: string) => void;
 }
@@ -203,8 +211,11 @@ function OrderCard({
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Adresă:</span>{" "}
-                      {order.details.street}, {order.details.city},{" "}
-                      {order.details.county}
+                      {order.details.street} {order.details.streetNumber || ''}
+                      {order.details.block && `, Bloc ${order.details.block}`}
+                      {order.details.floor && `, Etaj ${order.details.floor}`}
+                      {order.details.apartment && `, Ap ${order.details.apartment}`}
+                      , {order.details.city}, {order.details.county}
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Cod Poștal:</span>{" "}
@@ -387,6 +398,10 @@ export default function AdminOrderList() {
       order.details.email.toLowerCase().includes(searchTermLower) ||
       order.details.phoneNumber.includes(searchTerm) ||
       order.details.street.toLowerCase().includes(searchTermLower) ||
+      order.details.streetNumber?.toLowerCase().includes(searchTermLower) ||
+      order.details.block?.toLowerCase().includes(searchTermLower) ||
+      order.details.floor?.toLowerCase().includes(searchTermLower) ||
+      order.details.apartment?.toLowerCase().includes(searchTermLower) ||
       order.details.city.toLowerCase().includes(searchTermLower) ||
       order.details.county.toLowerCase().includes(searchTermLower) ||
       order.details.postalCode.includes(searchTerm) ||
@@ -459,30 +474,30 @@ export default function AdminOrderList() {
 
     // Aplicăm filtrele în funcție de selecție
     const matchesOrderFilter = (() => {
-      switch (orderFilter) {
-        case "nefinalizate":
-          return (
-            order.orderStatus !== "Comanda finalizata!" &&
-            order.orderStatus !== "Comanda anulata" &&
-            order.orderStatus !== "Comandă anulată" &&
-            order.orderStatus !== "Comanda rambursata" &&
-            order.orderStatus !== "Comandă rambursată"
-          );
-        case "card":
+    switch (orderFilter) {
+      case "nefinalizate":
+        return (
+          order.orderStatus !== "Comanda finalizata!" &&
+          order.orderStatus !== "Comanda anulata" &&
+          order.orderStatus !== "Comandă anulată" &&
+          order.orderStatus !== "Comanda rambursata" &&
+          order.orderStatus !== "Comandă rambursată"
+        );
+      case "card":
           return order.paymentType === "card";
-        case "ramburs":
+      case "ramburs":
           return order.paymentType === "ramburs";
-        case "completate":
+      case "completate":
           return isOrderStatus(order, ["Comanda finalizata!", "Comanda finalizată!"]);
-        case "anulate":
+      case "anulate":
           return isOrderStatus(order, ["Comanda anulata", "Comandă anulată"]);
-        case "rambursate":
+      case "rambursate":
           return isOrderStatus(order, ["Comanda rambursata", "Comandă rambursată"]);
-        case "toate":
+      case "toate":
           return true;
-        default:
+      default:
           return true;
-      }
+    }
     })();
 
     return matchesSearch && matchesOrderFilter && matchesMonthFilter(order);
@@ -741,22 +756,61 @@ export default function AdminOrderList() {
 
   const handleDownloadInvoice = async (orderId: string) => {
     try {
-      const response = await fetch(`/api/orders/${orderId}/invoice`);
-      if (!response.ok) {
-        throw new Error("Nu am putut descărca factura");
+      console.log("=== ÎNCEPERE DESCĂRCARE FACTURĂ ===");
+      console.log("Order ID:", orderId);
+      
+      // Verificăm dacă există factură
+      const order = orders.find(o => o.id === orderId);
+      console.log("Order găsit:", order);
+      console.log("OblioInvoiceId:", order?.oblioInvoiceId);
+      
+      if (!order?.oblioInvoiceId) {
+        console.log("Nu există factură pentru această comandă");
+        toast({
+          title: "Eroare",
+          description: "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
+          variant: "destructive",
+        });
+        return;
       }
 
+      console.log("Apelăm API-ul pentru descărcare...");
+      // Descărcăm factura din Oblio
+      const response = await fetch("/api/orders/" + orderId + "/invoice", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("Răspuns API:", response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Eroare API:", errorData);
+        throw new Error(errorData.error || "Nu am putut descărca factura");
+      }
+
+      console.log("Descărcăm blob-ul...");
+      // Descărcăm PDF-ul
       const blob = await response.blob();
+      console.log("Blob descărcat:", blob.size, "bytes");
+      
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `factura-${orderId}.pdf`;
+      a.download = `factura-${order.orderNumber}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      console.log("Factura descărcată cu succes!");
+      console.log("=== FINALIZARE DESCĂRCARE FACTURĂ ===");
     } catch (error) {
+      console.error("=== EROARE LA DESCĂRCAREA FACTURII ===");
       console.error("Error downloading invoice:", error);
+      console.error("=== SFÂRȘIT EROARE ===");
       toast({
         title: "Eroare",
         description:
@@ -837,6 +891,8 @@ export default function AdminOrderList() {
       });
     }
   };
+
+
 
   return (
     <div className="space-y-6">

@@ -52,9 +52,12 @@ export async function POST(
           siteId: await dpdClient.findSite(642, order.details.city.toUpperCase()),
           streetId: await dpdClient.findStreet(
             await dpdClient.findSite(642, order.details.city.toUpperCase()),
-            order.details.street.replace(/\d+.*$/, '').trim().toUpperCase()
+            order.details.street.trim().toUpperCase()
           ),
-          streetNo: order.details.street.match(/\d+/)?.[0] || '1',
+          streetNo: order.details.streetNumber || (() => {
+            const streetMatch = order.details.street.match(/\d+/);
+            return streetMatch ? streetMatch[0] : '1';
+          })(),
         },
       },
       service: {

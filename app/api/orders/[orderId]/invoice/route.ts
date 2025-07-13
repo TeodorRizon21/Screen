@@ -1,178 +1,138 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { renderToBuffer } from "@react-pdf/renderer";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { format } from "date-fns";
-import { createElement } from "react";
-
-const styles = StyleSheet.create({
-  page: {
-    padding: 30,
-    fontSize: 12,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 10,
-  },
-  section: {
-    margin: 10,
-    padding: 10,
-  },
-  row: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    borderBottomStyle: "solid",
-    alignItems: "center",
-    height: 24,
-  },
-  description: {
-    width: "60%",
-  },
-  quantity: {
-    width: "10%",
-  },
-  price: {
-    width: "15%",
-    textAlign: "right",
-  },
-  amount: {
-    width: "15%",
-    textAlign: "right",
-  },
-  totalContainer: {
-    marginTop: 20,
-    textAlign: "right",
-  },
-  total: {
-    fontSize: 16,
-  },
-  bold: {
-    fontWeight: "bold",
-  },
-  sectionTitle: {
-    fontSize: 14,
-    marginBottom: 5,
-    fontWeight: "bold",
-  },
-});
+import { downloadOblioInvoice } from "@/lib/oblio";
+import { auth } from "@clerk/nextjs/server";
+import { isAdmin } from "@/lib/auth";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { orderId: string } }
 ) {
   try {
+    console.log("=== ÎNCEPERE API DESCĂRCARE FACTURĂ ===");
+    const { orderId } = params;
+    console.log("Order ID:", orderId);
+    
     const { userId } = await auth();
+    const adminStatus = await isAdmin();
+    
+    console.log("User ID:", userId);
+    console.log("Admin status:", adminStatus);
+
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+      console.log("Utilizator neautentificat");
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
+    if (!orderId) {
+      return NextResponse.json(
+        { error: "Order ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Obținem comanda din baza de date
     const order = await prisma.order.findUnique({
-      where: {
-        id: params.orderId,
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-        details: true,
-      },
+      where: { id: orderId },
     });
+
+    console.log("Comanda găsită:", order ? "Da" : "Nu");
 
     if (!order) {
-      return new NextResponse("Order not found", { status: 404 });
+      console.log("Comanda nu a fost găsită");
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
     }
 
-    if (order.userId !== userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    console.log("OblioInvoiceId:", order.oblioInvoiceId);
+    console.log("Order userId:", order.userId);
+
+    // Verificăm dacă utilizatorul are dreptul să acceseze această comandă
+    // Administratorii pot accesa toate facturile, utilizatorii doar comenzile lor
+    if (!adminStatus && order.userId && order.userId !== userId) {
+      console.log("Acces interzis - utilizator nu este admin și nu este proprietarul comenzii");
+      return NextResponse.json(
+        { error: "Unauthorized - You can only download invoices for your own orders" },
+        { status: 403 }
+      );
     }
 
-    const currentDate = format(new Date(), "dd/MM/yyyy");
+    // Verificăm dacă factura a fost generată
+    if (!order.oblioInvoiceId) {
+      console.log("Factura nu a fost generată pentru această comandă");
+      return NextResponse.json(
+        { error: "Invoice not generated for this order" },
+        { status: 400 }
+      );
+    }
 
-    const pdfBuffer = await renderToBuffer(
-      createElement(Document, {}, 
-        createElement(Page, { size: "A4", style: styles.page },
-          createElement(View, { style: styles.header },
-            createElement(Text, { style: [styles.title, styles.bold] }, "Factura"),
-            createElement(Text, {}, `Data: ${currentDate}`),
-            createElement(Text, {}, `Numar comanda: ${order.orderNumber}`)
-          ),
-          order.details.isCompany && [
-            createElement(View, { style: styles.section },
-              createElement(Text, { style: styles.sectionTitle }, "Date furnizor:"),
-              createElement(Text, {}, "ScreenShield SRL"),
-              createElement(Text, {}, "CUI: RO12345678"),
-              createElement(Text, {}, "Reg. Com.: J40/123/2023"),
-              createElement(Text, {}, "Adresa: Strada Exemplu, Nr. 123"),
-              createElement(Text, {}, "Oras, Judet, Cod Postal")
-            ),
-            createElement(View, { style: styles.section },
-              createElement(Text, { style: styles.sectionTitle }, "Date cumparator:"),
-              createElement(Text, {}, order.details.companyName ?? "N/A"),
-              createElement(Text, {}, `CUI: ${order.details.cui ?? "N/A"}`),
-              createElement(Text, {}, `Reg. Com.: ${order.details.regCom ?? "N/A"}`),
-              createElement(Text, {}, `Adresa sediului social: ${order.details.companyStreet ?? "N/A"}`),
-              createElement(Text, {}, `${order.details.companyCity ?? "N/A"}, ${order.details.companyCounty ?? "N/A"}`)
-            )
-          ],
-          createElement(View, { style: styles.section },
-            createElement(Text, { style: styles.sectionTitle }, "Date livrare:"),
-            ...(order.details.isCompany ? [
-              createElement(Text, {}, `Adresa: ${order.details.street}`),
-              createElement(Text, {}, `${order.details.city}, ${order.details.county} ${order.details.postalCode}`),
-              createElement(Text, {}, order.details.country)
-            ] : [
-              createElement(Text, {}, order.details.fullName),
-              createElement(Text, {}, order.details.email),
-              createElement(Text, {}, order.details.phoneNumber),
-              createElement(Text, {}, order.details.street),
-              createElement(Text, {}, `${order.details.city}, ${order.details.county} ${order.details.postalCode}`),
-              createElement(Text, {}, order.details.country)
-            ])
-          ),
-          createElement(View, { style: styles.section },
-            createElement(View, { style: styles.row },
-              createElement(Text, { style: [styles.description, styles.bold] }, "Produs"),
-              createElement(Text, { style: [styles.quantity, styles.bold] }, "Cant."),
-              createElement(Text, { style: [styles.price, styles.bold] }, "Pret"),
-              createElement(Text, { style: [styles.amount, styles.bold] }, "Total")
-            ),
-            ...order.items.map((item) =>
-              createElement(View, { key: item.id, style: styles.row },
-                createElement(Text, { style: styles.description }, `${item.product.name} (${item.size})`),
-                createElement(Text, { style: styles.quantity }, item.quantity.toString()),
-                createElement(Text, { style: styles.price }, `${item.price.toFixed(2)} RON`),
-                createElement(Text, { style: styles.amount }, `${(item.price * item.quantity).toFixed(2)} RON`)
-              )
-            ),
-            createElement(View, { style: styles.row },
-              createElement(Text, { style: styles.description }, "Taxă de livrare"),
-              createElement(Text, { style: styles.quantity }, "1"),
-              createElement(Text, { style: styles.price }, "15.00 RON"),
-              createElement(Text, { style: styles.amount }, "15.00 RON")
-            )
-          ),
-          createElement(View, { style: styles.totalContainer },
-            createElement(Text, { style: [styles.total, styles.bold] }, `Total: ${order.total.toFixed(2)} RON`)
-          )
-        )
-      )
-    );
+    // Încercăm să descărcăm direct din URL-ul salvat în baza de date
+    if (order.oblioInvoiceUrl) {
+      console.log("Încercăm să descărcăm din URL-ul salvat:", order.oblioInvoiceUrl);
+      try {
+        const pdfResponse = await fetch(order.oblioInvoiceUrl);
+        console.log("Răspuns URL salvat:", pdfResponse.status, pdfResponse.statusText);
+        if (pdfResponse.ok) {
+          const pdfBlob = await pdfResponse.blob();
+          console.log("Blob descărcat din URL salvat:", pdfBlob.size, "bytes");
+          
+          // Returnăm PDF-ul direct către client
+          return new NextResponse(pdfBlob, {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename="factura-${order.oblioInvoiceNumber || order.orderNumber}.pdf"`,
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Error downloading from saved URL:", error);
+      }
+    }
 
-    return new NextResponse(pdfBuffer, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="factura-${order.id}.pdf"`,
-      },
-    });
+    console.log("Încercăm să obținem din Oblio API...");
+    // Dacă nu funcționează URL-ul salvat, încercăm să obținem din Oblio API
+    const oblioResult = await downloadOblioInvoice(order.oblioInvoiceId);
+
+    console.log("Rezultat Oblio API:", oblioResult);
+
+    if (oblioResult.success) {
+      console.log("Descărcăm PDF-ul din Oblio:", oblioResult.pdfUrl);
+      // Descărcăm PDF-ul din Oblio
+      const pdfResponse = await fetch(oblioResult.pdfUrl);
+      console.log("Răspuns PDF Oblio:", pdfResponse.status, pdfResponse.statusText);
+      if (!pdfResponse.ok) {
+        throw new Error("Failed to download PDF from Oblio");
+      }
+
+      const pdfBlob = await pdfResponse.blob();
+      console.log("Blob descărcat din Oblio:", pdfBlob.size, "bytes");
+      
+      // Returnăm PDF-ul direct către client
+      return new NextResponse(pdfBlob, {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="factura-${order.oblioInvoiceNumber || order.orderNumber}.pdf"`,
+        },
+      });
+    } else {
+      throw new Error("Failed to get invoice from Oblio");
+    }
+
   } catch (error) {
-    console.error("[INVOICE_GET]", error);
-    return new NextResponse("Internal error", { status: 500 });
+    console.error("=== EROARE LA DESCĂRCAREA FACTURII ===");
+    console.error("Error downloading invoice:", error);
+    console.error("=== SFÂRȘIT EROARE ===");
+    return NextResponse.json(
+      { 
+        error: "Failed to download invoice",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
   }
-}
+} 

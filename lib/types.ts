@@ -1,18 +1,16 @@
-import { Product as PrismaProduct } from "@prisma/client";
+import { OrderItem, OrderDetails, OrderDiscountCode, DiscountCode, Product as PrismaProduct } from "@prisma/client";
 
 export interface Product {
   id: string;
   name: string;
-  description: string;
+  description?: string;
+  price: number;
   images: string[];
-  allowOutOfStock: boolean;
-  showStockLevel: boolean;
-  make: string;
-  model: string;
-  generation: string;
+  category?: string;
+  make?: string;
+  model?: string;
+  year?: string;
   tags?: string[];
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface SizeVariant {
@@ -24,7 +22,7 @@ export interface SizeVariant {
   lowStockThreshold?: number | null;
 }
 
-export interface ProductWithVariants extends PrismaProduct {
+export interface ProductWithVariants extends Product {
   sizeVariants: {
     id: string;
     size: string;
@@ -35,4 +33,26 @@ export interface ProductWithVariants extends PrismaProduct {
   }[];
   tags?: string[];
 }
+
+export type OrderWithItems = {
+  id: string;
+  userId?: string;
+  items: (OrderItem & { product: PrismaProduct })[];
+  details: OrderDetails;
+  total: number;
+  paymentStatus: string;
+  orderStatus: string;
+  createdAt: Date;
+  updatedAt: Date;
+  paymentType?: string | null;
+  courier?: string | null;
+  awb?: string | null;
+  dpdShipmentId?: string | null;
+  dpdOperationCode?: string | null;
+  orderNumber?: string | null;
+  oblioInvoiceId?: string | null;
+  oblioInvoiceNumber?: string | null;
+  oblioInvoiceUrl?: string | null;
+  discountCodes: (OrderDiscountCode & { discountCode: DiscountCode })[];
+};
 
