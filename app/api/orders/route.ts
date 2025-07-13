@@ -74,6 +74,7 @@ export async function GET(request: Request) {
       paymentType: order.paymentType,
       courier: order.courier,
       awb: order.awb,
+      invoiceUrl: order.oblioInvoiceUrl,
       discountCodes: order.discountCodes.map(dc => ({
         code: dc.discountCode.code,
         type: dc.discountCode.type,

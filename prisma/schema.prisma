@@ -33,25 +33,28 @@ model Product {
 }
 
 model Order {
-  id                String              @id @default(auto()) @map("_id") @db.ObjectId
-  orderNumber       String              @unique
-  userId            String?
-  total             Float
-  paymentStatus     String
-  orderStatus       String
-  paymentType       String
-  courier           String?
-  awb               String?
-  dpdShipmentId     String? // ID-ul expedierii în sistemul DPD (ex: EE20250624140758431BAODWHPM)
-  dpdOperationCode  String? // Codul operațiunii DPD (ex: D11)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  items             OrderItem[]
-  details           OrderDetails        @relation(fields: [detailsId], references: [id])
-  detailsId         String              @db.ObjectId
-  discountCodes     OrderDiscountCode[]
-  checkoutSessionId String?
-  reviews           Review[]
+  id                 String              @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String?
+  items              OrderItem[]
+  details            OrderDetails        @relation(fields: [detailsId], references: [id])
+  detailsId          String              @db.ObjectId
+  total              Float
+  paymentStatus      String              @default("pending")
+  orderStatus        String              @default("În așteptare")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  paymentType        String?
+  courier            String?
+  awb                String?
+  dpdShipmentId      String?
+  dpdOperationCode   String?
+  orderNumber        String?             @unique
+  oblioInvoiceId     String?
+  oblioInvoiceNumber String?
+  oblioInvoiceUrl    String?
+  discountCodes      OrderDiscountCode[]
+  checkoutSessionId  String?
+  reviews            Review[]
 }
 
 model OrderItem {
@@ -72,10 +75,15 @@ model OrderDetails {
   email         String
   phoneNumber   String
   street        String
+  streetNumber  String?
+  block         String?
+  floor         String?
+  apartment     String?
   city          String
   county        String
   postalCode    String
   country       String
+  cif           String? // CIF-ul clientului pentru facturare
   notes         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

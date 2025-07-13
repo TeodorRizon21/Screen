@@ -33,6 +33,10 @@ interface OrderDetails {
   email: string;
   phoneNumber: string;
   street: string;
+  streetNumber?: string | null;
+  block?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
   city: string;
   county: string;
   postalCode: string;
@@ -61,7 +65,7 @@ interface OrderWithItems {
   total: number;
   paymentStatus: string;
   orderStatus: string;
-  paymentType: string;
+  paymentType: string | null;
   courier: string | null;
   awb: string | null;
   createdAt: Date;
@@ -72,6 +76,9 @@ interface OrderWithItems {
     product: OrderProduct;
   })[];
   details: OrderDetails;
+  oblioInvoiceId?: string | null;
+  oblioInvoiceUrl?: string | null;
+  oblioInvoiceNumber?: string | null;
 }
 
 // Tipuri pentru formularele noi
@@ -224,6 +231,11 @@ export async function sendAdminNotification(
           },
         },
         details: true,
+        discountCodes: {
+          include: {
+            discountCode: true,
+          },
+        },
       },
     });
 
@@ -237,6 +249,7 @@ export async function sendAdminNotification(
       console.warn("No admin emails configured");
       return { success: false, error: "No admin emails configured" };
     }
+
 
     const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
     const itemsList = completeOrder.items
@@ -356,12 +369,15 @@ export async function sendAdminNotification(
             </div>
           </div>
         </div>
+
       </div>
     `;
 
     const results = await Promise.allSettled(
       adminEmails.map((admin) =>
+
         sendEmail(admin.email, `🛒 Comandă Nouă #${completeOrder.orderNumber} - ${completeOrder.total.toFixed(2)} RON`, html)
+
       )
     );
 
@@ -374,10 +390,10 @@ export async function sendAdminNotification(
       results,
     };
   } catch (error) {
-    console.error("Error sending admin notifications:", error);
+    console.error("Error sending admin notification:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Failed to send admin notification",
     };
   }
 }
@@ -391,183 +407,60 @@ export async function sendOrderConfirmation(
   }
 
   try {
-    const currentDate = format(new Date(), "dd/MM/yyyy");
+    // Pregătim atașamentele
+    const attachments: EmailAttachment[] = [];
 
-    const pdfBuffer = await renderToBuffer(
-      createElement(
-        Document,
-        {},
-        createElement(
-          Page,
-          { size: "A4", style: styles.page },
-          createElement(
-            View,
-            { style: styles.header },
-            createElement(
-              Text,
-              { style: [styles.title, styles.bold] },
-              "Factura"
-            ),
-            createElement(Text, {}, `Data: ${currentDate}`),
-            createElement(Text, {}, `Numar comanda: ${order.orderNumber}`)
-          ),
-          order.details.isCompany && [
-            createElement(
-              View,
-              { style: styles.section },
-              createElement(
-                Text,
-                { style: styles.sectionTitle },
-                "Date furnizor:"
-              ),
-              createElement(Text, {}, "ScreenShield SRL"),
-              createElement(Text, {}, "CUI: RO12345678"),
-              createElement(Text, {}, "Reg. Com.: J40/123/2023"),
-              createElement(Text, {}, "Adresa: Strada Exemplu, Nr. 123"),
-              createElement(Text, {}, "Oras, Judet, Cod Postal")
-            ),
-            createElement(
-              View,
-              { style: styles.section },
-              createElement(
-                Text,
-                { style: styles.sectionTitle },
-                "Date cumparator:"
-              ),
-              createElement(Text, {}, order.details.companyName ?? "N/A"),
-              createElement(Text, {}, `CUI: ${order.details.cui ?? "N/A"}`),
-              createElement(
-                Text,
-                {},
-                `Reg. Com.: ${order.details.regCom ?? "N/A"}`
-              ),
-              createElement(
-                Text,
-                {},
-                `Adresa sediului social: ${
-                  order.details.companyStreet ?? "N/A"
-                }`
-              ),
-              createElement(
-                Text,
-                {},
-                `${order.details.companyCity ?? "N/A"}, ${
-                  order.details.companyCounty ?? "N/A"
-                }`
-              )
-            ),
-          ],
-          createElement(
-            View,
-            { style: styles.section },
-            createElement(
-              Text,
-              { style: styles.sectionTitle },
-              "Date livrare:"
-            ),
-            ...(order.details.isCompany
-              ? [
-                  createElement(Text, {}, `Adresa: ${order.details.street}`),
-                  createElement(
-                    Text,
-                    {},
-                    `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
-                  ),
-                  createElement(Text, {}, order.details.country),
-                ]
-              : [
-                  createElement(Text, {}, order.details.fullName),
-                  createElement(Text, {}, order.details.email),
-                  createElement(Text, {}, order.details.phoneNumber),
-                  createElement(Text, {}, order.details.street),
-                  createElement(
-                    Text,
-                    {},
-                    `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
-                  ),
-                  createElement(Text, {}, order.details.country),
-                ])
-          ),
-          createElement(
-            View,
-            { style: styles.section },
-            createElement(
-              View,
-              { style: styles.row },
-              createElement(
-                Text,
-                { style: [styles.description, styles.bold] },
-                "Produs"
-              ),
-              createElement(
-                Text,
-                { style: [styles.quantity, styles.bold] },
-                "Cant."
-              ),
-              createElement(
-                Text,
-                { style: [styles.price, styles.bold] },
-                "Pret"
-              ),
-              createElement(
-                Text,
-                { style: [styles.amount, styles.bold] },
-                "Total"
-              )
-            ),
-            ...order.items.map((item) =>
-              createElement(
-                View,
-                { key: item.id, style: styles.row },
-                createElement(
-                  Text,
-                  { style: styles.description },
-                  `${item.product.name} (${item.size})`
-                ),
-                createElement(
-                  Text,
-                  { style: styles.quantity },
-                  item.quantity.toString()
-                ),
-                createElement(
-                  Text,
-                  { style: styles.price },
-                  `${item.price.toFixed(2)} RON`
-                ),
-                createElement(
-                  Text,
-                  { style: styles.amount },
-                  `${(item.price * item.quantity).toFixed(2)} RON`
-                )
-              )
-            ),
-            createElement(
-              View,
-              { style: styles.row },
-              createElement(
-                Text,
-                { style: styles.description },
-                "Taxă de livrare"
-              ),
-              createElement(Text, { style: styles.quantity }, "1"),
-              createElement(Text, { style: styles.price }, "15.00 RON"),
-              createElement(Text, { style: styles.amount }, "15.00 RON")
-            )
-          ),
-          createElement(
-            View,
-            { style: styles.totalContainer },
-            createElement(
-              Text,
-              { style: [styles.total, styles.bold] },
-              `Total: ${order.total.toFixed(2)} RON`
-            )
-          )
-        )
-      )
-    );
+    // Descărcăm și atașăm factura Oblio
+    if (order.oblioInvoiceId) {
+      try {
+        console.log("Descărcăm factura Oblio pentru comanda:", order.id);
+        
+        // Încercăm să descărcăm din API-ul intern
+        const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/orders/${order.id}/invoice`;
+        console.log("Apelăm API-ul:", apiUrl);
+        
+        const apiResponse = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (apiResponse.ok) {
+          const pdfBuffer = await apiResponse.arrayBuffer();
+          attachments.push({
+            filename: `factura-${order.oblioInvoiceNumber || order.orderNumber}.pdf`,
+            content: Buffer.from(pdfBuffer),
+          });
+          console.log("Factura Oblio atașată cu succes din API");
+        } else {
+          console.error("Eroare la descărcarea din API:", apiResponse.statusText);
+          
+          // Fallback la URL-ul direct
+          if (order.oblioInvoiceUrl) {
+            console.log("Încercăm fallback la URL-ul direct:", order.oblioInvoiceUrl);
+            const oblioResponse = await fetch(order.oblioInvoiceUrl);
+            if (oblioResponse.ok) {
+              const oblioBuffer = await oblioResponse.arrayBuffer();
+              attachments.push({
+                filename: `factura-${order.oblioInvoiceNumber || order.orderNumber}.pdf`,
+                content: Buffer.from(oblioBuffer),
+              });
+              console.log("Factura Oblio atașată cu succes din URL direct");
+            } else {
+              console.error("Eroare și la URL-ul direct:", oblioResponse.statusText);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Eroare la descărcarea facturii Oblio:", error);
+      }
+    } else {
+      console.log("Nu există ID pentru factura Oblio");
+    }
 
     const html = `
+
       <div style="background: #fff; font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #e9ecef;">
         <!-- Header + Logo -->
         <div style="background: #fff; padding: 32px 0 0 0; position: relative;">
@@ -588,20 +481,57 @@ export async function sendOrderConfirmation(
           <div style="margin-bottom: 10px;">Adresă de livrare: <strong>${order.details.street}, ${order.details.city}, ${order.details.county} ${order.details.postalCode}, ${order.details.country}</strong></div>
         </div>
         <div style="background: #f5f5f5; padding: 16px 0; text-align: center; color: #888; font-size: 0.9rem; border-top: 1px solid #e9ecef;">&copy; ${new Date().getFullYear()} ScreenShield</div>
+
       </div>
     `;
 
-    return await sendEmail(order.details.email, "Order Confirmation", html, [
-      {
-        filename: `invoice-${order.id}.pdf`,
-        content: pdfBuffer,
-      },
-    ]);
-  } catch (error: unknown) {
-    console.error("Error sending order confirmation:", error);
+    const emailData = {
+      from: "Screen Shield <no-reply@screenshield.ro>",
+      to: order.details.email,
+      subject: `Confirmare comandă #${order.orderNumber} - Screen Shield`,
+      html,
+      text: `✅ Confirmare comandă #${order.orderNumber} - Screen Shield
+
+Salut ${order.details.fullName.split(' ')[0]}!
+
+Mulțumim pentru comanda ta! Comanda a fost procesată cu succes și este în curs de pregătire.
+
+${order.oblioInvoiceUrl ? `📄 Factura fiscală: ${order.oblioInvoiceUrl}` : ""}
+
+📋 DETALII COMANDĂ:
+🔢 Număr comandă: ${order.orderNumber}
+💰 Total: ${order.total.toLocaleString('ro-RO')} RON
+💳 Metoda de plată: ${order.paymentType === "card" ? "Card bancar" : "Ramburs"}
+
+📍 Adresa de livrare:
+${order.details.fullName}
+${order.details.street}${order.details.streetNumber ? ` ${order.details.streetNumber}` : ''}
+${order.details.city}, ${order.details.county}
+${order.details.postalCode || ""}
+📞 ${order.details.phoneNumber}
+
+📞 Pentru întrebări:
+📧 Email: contact@screenshield.ro
+📱 WhatsApp: +40 123 456 789
+
+Odată ce coletul este predat la curier, vei primi un email cu numărul de urmărire.
+
+Cu drag,
+Echipa Screen Shield`,
+      attachments,
+    };
+
+    const response = await resend.emails.send(emailData);
+
+    return {
+      success: true,
+      data: response,
+    };
+  } catch (error) {
+    console.error("Error sending order confirmation email:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: "Failed to send order confirmation email",
     };
   }
 }
