@@ -59,7 +59,7 @@ interface OrderProduct {
 }
 
 interface OrderWithItems {
-  orderNumber: any;
+  orderNumber: string;
   id: string;
   userId: string | null;
   total: number;
@@ -250,147 +250,134 @@ export async function sendAdminNotification(
       return { success: false, error: "No admin emails configured" };
     }
 
-    // Calculăm totalul cu reduceri
-    const subtotal = completeOrder.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const discountTotal = completeOrder.discountCodes.reduce((sum, dc) => {
-      if (dc.discountCode.type === 'percentage') {
-        return sum + (subtotal * dc.discountCode.value / 100);
-      } else {
-        return sum + dc.discountCode.value;
-      }
-    }, 0);
-    const finalTotal = subtotal - discountTotal;
+
+    const currentDate = format(new Date(), "dd/MM/yyyy HH:mm");
+    const itemsList = completeOrder.items
+      .map(
+        (item) => `
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 12px 8px; text-align: left;">${item.product.name} (${item.size})</td>
+            <td style="padding: 12px 8px; text-align: center;">${item.quantity}</td>
+            <td style="padding: 12px 8px; text-align: right;">${item.price.toFixed(2)} RON</td>
+            <td style="padding: 12px 8px; text-align: right; font-weight: bold;">${(item.price * item.quantity).toFixed(2)} RON</td>
+          </tr>`
+      )
+      .join("");
 
     const html = `
-      <div style="max-width:700px;margin:0 auto;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-        <!-- HEADER -->
-        <div style="background:linear-gradient(135deg,#dc3545 0%,#c82333 100%);padding:30px 20px;text-align:center;">
-          <h1 style="color:#fff;font-size:28px;font-weight:700;margin:0;text-shadow:0 2px 4px rgba(0,0,0,0.2);">
-            🛒 COMANDA NOUĂ PRIMITĂ
-          </h1>
-          <p style="color:#fff;font-size:16px;margin:10px 0 0 0;opacity:0.9;">
-            O nouă comandă a fost plasată pe site-ul tău
-          </p>
-        </div>
-
-        <!-- INFO RAPIDĂ -->
-        <div style="padding:30px;background:#fff;">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px;">
-            <div style="background:#f8f9fa;border-radius:8px;padding:20px;text-align:center;">
-              <h3 style="color:#dc3545;margin:0 0 10px 0;font-size:18px;">🔢 Număr Comandă</h3>
-              <p style="font-size:24px;font-weight:700;color:#333;margin:0;">${completeOrder.orderNumber}</p>
-            </div>
-            <div style="background:#f8f9fa;border-radius:8px;padding:20px;text-align:center;">
-              <h3 style="color:#dc3545;margin:0 0 10px 0;font-size:18px;">💰 Total Comandă</h3>
-              <p style="font-size:24px;font-weight:700;color:#333;margin:0;">${finalTotal.toLocaleString('ro-RO')} RON</p>
-            </div>
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; background: #f8f9fa; padding: 20px;">
+        <div style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 28px; font-weight: 600;">🛒 Comandă Nouă Primită</h1>
+            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">ScreenShield - Protecție pentru mașina ta</p>
           </div>
 
-          <!-- CLIENT -->
-          <div style="background:#e8f5e8;border:1px solid #28a745;border-radius:8px;padding:20px;margin-bottom:25px;">
-            <h3 style="color:#155724;margin:0 0 15px 0;font-size:18px;">👤 Informații Client</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-              <div>
-                <p style="margin:0 0 5px 0;color:#155724;"><strong>Nume:</strong> ${completeOrder.details.fullName}</p>
-                <p style="margin:0 0 5px 0;color:#155724;"><strong>Email:</strong> ${completeOrder.details.email}</p>
-                <p style="margin:0;color:#155724;"><strong>Telefon:</strong> ${completeOrder.details.phoneNumber}</p>
+          <!-- Order Info -->
+          <div style="padding: 30px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;">
+                <h3 style="margin: 0 0 15px 0; color: #333; font-size: 18px;">📋 Detalii Comandă</h3>
+                <p style="margin: 5px 0; color: #666;"><strong>ID Comandă:</strong> <span style="color: #333; font-family: monospace;">${completeOrder.orderNumber}</span></p>
+                <p style="margin: 5px 0; color: #666;"><strong>Data:</strong> <span style="color: #333;">${currentDate}</span></p>
+                <p style="margin: 5px 0; color: #666;"><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">${completeOrder.orderStatus}</span></p>
+                <p style="margin: 5px 0; color: #666;"><strong>Plată:</strong> <span style="color: #333;">${completeOrder.paymentStatus}</span></p>
+                <p style="margin: 5px 0; color: #666;"><strong>Metodă:</strong> <span style="color: #333;">${completeOrder.paymentType}</span></p>
               </div>
-              <div>
-                <p style="margin:0 0 5px 0;color:#155724;"><strong>Metoda plată:</strong> ${completeOrder.paymentType === 'card' ? '💳 Card bancar' : '💵 Ramburs'}</p>
-                <p style="margin:0 0 5px 0;color:#155724;"><strong>Status plată:</strong> ${completeOrder.paymentStatus === 'COMPLETED' ? '✅ Plătit' : '⏳ În așteptare'}</p>
-                <p style="margin:0;color:#155724;"><strong>Data comandă:</strong> ${new Date(completeOrder.createdAt).toLocaleString('ro-RO')}</p>
+
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745;">
+                <h3 style="margin: 0 0 15px 0; color: #333; font-size: 18px;">💰 Informații Financiare</h3>
+                <p style="margin: 5px 0; color: #666;"><strong>Total Produse:</strong> <span style="color: #333;">${(completeOrder.total - 15).toFixed(2)} RON</span></p>
+                <p style="margin: 5px 0; color: #666;"><strong>Transport:</strong> <span style="color: #333;">15.00 RON</span></p>
+                <p style="margin: 5px 0; color: #666;"><strong>Total General:</strong> <span style="color: #28a745; font-size: 18px; font-weight: bold;">${completeOrder.total.toFixed(2)} RON</span></p>
               </div>
             </div>
-          </div>
 
-          <!-- ADRESĂ LIVRARE -->
-          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:20px;margin-bottom:25px;">
-            <h3 style="color:#856404;margin:0 0 15px 0;font-size:18px;">📍 Adresa de Livrare</h3>
-            <p style="margin:0 0 5px 0;color:#856404;">${completeOrder.details.street}${completeOrder.details.streetNumber ? ` ${completeOrder.details.streetNumber}` : ''}</p>
-            <p style="margin:0 0 5px 0;color:#856404;">${completeOrder.details.city}, ${completeOrder.details.county}</p>
-            <p style="margin:0 0 5px 0;color:#856404;">${completeOrder.details.postalCode || ''}</p>
-            <p style="margin:0;color:#856404;">${completeOrder.details.country}</p>
-          </div>
-
-          <!-- PRODUSE -->
-          <div style="background:#fff;border:1px solid #e9ecef;border-radius:8px;padding:20px;margin-bottom:25px;">
-            <h3 style="color:#333;margin:0 0 15px 0;font-size:18px;">🛍️ Produse Comandate</h3>
-            ${completeOrder.items
-              .map(
-                (item) => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f1f3f4;">
-                <div style="flex:1;">
-                  <p style="font-weight:600;color:#333;margin:0 0 5px 0;font-size:15px;">${item.product.name}</p>
-                  <p style="color:#666;margin:0;font-size:13px;">Mărime: ${item.size} | Cantitate: ${item.quantity}</p>
+            <!-- Customer Info -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #ffc107;">
+              <h3 style="margin: 0 0 15px 0; color: #333; font-size: 18px;">👤 Informații Client</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <p style="margin: 5px 0; color: #666;"><strong>Nume:</strong> <span style="color: #333;">${completeOrder.details.fullName}</span></p>
+                  <p style="margin: 5px 0; color: #666;"><strong>Email:</strong> <span style="color: #333;">${completeOrder.details.email}</span></p>
+                  <p style="margin: 5px 0; color: #666;"><strong>Telefon:</strong> <span style="color: #333;">${completeOrder.details.phoneNumber}</span></p>
+                  ${completeOrder.details.isCompany ? `
+                    <p style="margin: 5px 0; color: #666;"><strong>Companie:</strong> <span style="color: #333;">${completeOrder.details.companyName}</span></p>
+                    <p style="margin: 5px 0; color: #666;"><strong>CUI:</strong> <span style="color: #333;">${completeOrder.details.cui}</span></p>
+                  ` : ''}
                 </div>
-                <div style="text-align:right;">
-                  <p style="font-weight:600;color:#333;margin:0;font-size:15px;">${(item.price * item.quantity).toLocaleString('ro-RO')} RON</p>
+                <div>
+                  <p style="margin: 5px 0; color: #666;"><strong>Adresa:</strong></p>
+                  <p style="margin: 5px 0; color: #333;">${completeOrder.details.street}</p>
+                  <p style="margin: 5px 0; color: #333;">${completeOrder.details.city}, ${completeOrder.details.county} ${completeOrder.details.postalCode}</p>
+                  <p style="margin: 5px 0; color: #333;">${completeOrder.details.country}</p>
                 </div>
               </div>
-            `
-              )
-              .join("")}
-          </div>
-
-          <!-- REDUCERI -->
-          ${completeOrder.discountCodes.length > 0 ? `
-          <div style="background:#d1ecf1;border:1px solid #bee5eb;border-radius:8px;padding:20px;margin-bottom:25px;">
-            <h3 style="color:#0c5460;margin:0 0 15px 0;font-size:18px;">🎫 Coduri de Reducere Aplicate</h3>
-            ${completeOrder.discountCodes
-              .map(
-                (dc) => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
-                <span style="color:#0c5460;font-weight:600;">${dc.discountCode.code}</span>
-                <span style="color:#0c5460;">-${dc.discountCode.value}${dc.discountCode.type === 'percentage' ? '%' : ' RON'}</span>
-              </div>
-            `
-              )
-              .join("")}
-          </div>
-          ` : ''}
-
-          <!-- SUMAR FINANCIAR -->
-          <div style="background:#f8f9fa;border-radius:8px;padding:20px;margin-bottom:25px;">
-            <h3 style="color:#333;margin:0 0 15px 0;font-size:18px;">💰 Sumar Financiar</h3>
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e9ecef;">
-              <span style="color:#666;">Subtotal:</span>
-              <span style="color:#333;font-weight:600;">${subtotal.toLocaleString('ro-RO')} RON</span>
+              ${completeOrder.details.notes ? `
+                <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
+                  <p style="margin: 0; color: #856404;"><strong>📝 Note client:</strong> ${completeOrder.details.notes}</p>
+                </div>
+              ` : ''}
             </div>
-            ${discountTotal > 0 ? `
-            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e9ecef;">
-              <span style="color:#666;">Reduceri:</span>
-              <span style="color:#dc3545;font-weight:600;">-${discountTotal.toLocaleString('ro-RO')} RON</span>
-            </div>
-            ` : ''}
-            <div style="display:flex;justify-content:space-between;padding:8px 0;">
-              <span style="color:#333;font-weight:600;font-size:16px;">Total:</span>
-              <span style="color:#dc3545;font-weight:700;font-size:18px;">${finalTotal.toLocaleString('ro-RO')} RON</span>
-            </div>
-          </div>
 
-          <!-- ACȚIUNI -->
-          <div style="text-align:center;padding:20px 0;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders" style="display:inline-block;background:#dc3545;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:0 10px;">
-              👁️ Vezi Detalii Comandă
-            </a>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders" style="display:inline-block;background:#28a745;color:#fff;padding:15px 30px;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;margin:0 10px;">
-              ✅ Finalizează Comanda
-            </a>
+            <!-- Products Table -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #17a2b8;">
+              <h3 style="margin: 0 0 20px 0; color: #333; font-size: 18px;">📦 Produse Comandate</h3>
+              <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <thead>
+                  <tr style="background: #667eea; color: white;">
+                    <th style="padding: 15px 8px; text-align: left; font-weight: 600;">Produs</th>
+                    <th style="padding: 15px 8px; text-align: center; font-weight: 600;">Cantitate</th>
+                    <th style="padding: 15px 8px; text-align: right; font-weight: 600;">Preț Unit</th>
+                    <th style="padding: 15px 8px; text-align: right; font-weight: 600;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${itemsList}
+                </tbody>
+                <tfoot>
+                  <tr style="background: #e9ecef; font-weight: bold;">
+                    <td colspan="3" style="padding: 15px 8px; text-align: right;">Total Produse:</td>
+                    <td style="padding: 15px 8px; text-align: right;">${(completeOrder.total - 15).toFixed(2)} RON</td>
+                  </tr>
+                  <tr style="background: #e9ecef; font-weight: bold;">
+                    <td colspan="3" style="padding: 15px 8px; text-align: right;">Transport:</td>
+                    <td style="padding: 15px 8px; text-align: right;">15.00 RON</td>
+                  </tr>
+                  <tr style="background: #667eea; color: white; font-weight: bold;">
+                    <td colspan="3" style="padding: 15px 8px; text-align: right;">TOTAL GENERAL:</td>
+                    <td style="padding: 15px 8px; text-align: right;">${completeOrder.total.toFixed(2)} RON</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <!-- Action Button -->
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/orders" 
+                 style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                🔍 Vezi Detaliile Comenzii
+              </a>
+            </div>
+
+            <!-- Footer -->
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center; color: #666;">
+              <p style="margin: 0; font-size: 14px;">
+                <strong>ScreenShield</strong> - Protecție profesională pentru mașina ta<br>
+                Această notificare a fost generată automat la ${currentDate}
+              </p>
+            </div>
           </div>
         </div>
 
-        <!-- FOOTER -->
-        <div style="background:#333;color:#fff;text-align:center;padding:20px;">
-          <p style="margin:0;font-size:14px;opacity:0.8;">
-            Această notificare a fost trimisă automat de sistemul Screen Shield.
-          </p>
-        </div>
       </div>
     `;
 
     const results = await Promise.allSettled(
       adminEmails.map((admin) =>
-        sendEmail(admin.email, `🛒 Comandă nouă #${completeOrder.orderNumber} - ${completeOrder.details.fullName}`, html)
+
+        sendEmail(admin.email, `🛒 Comandă Nouă #${completeOrder.orderNumber} - ${completeOrder.total.toFixed(2)} RON`, html)
+
       )
     );
 
@@ -473,124 +460,28 @@ export async function sendOrderConfirmation(
     }
 
     const html = `
-      <div style="max-width:600px;margin:0 auto;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#fff;border-radius:15px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-        <!-- HEADER CU LOGO -->
-        <div style="background:linear-gradient(135deg,#ff7f2a 0%,#ff6b35 100%);padding:40px 20px;text-align:center;">
-          <img src="https://screenshield.ro/logoscreenshield.png" alt="Screen Shield" style="height:70px;margin-bottom:20px;">
-          <h1 style="color:#fff;font-size:28px;font-weight:700;margin:0;text-shadow:0 2px 4px rgba(0,0,0,0.1);">
-            ✅ COMANDA PLASATĂ CU SUCCES
-          </h1>
-          <p style="color:#fff;font-size:16px;margin:10px 0 0 0;opacity:0.9;">
-            Mulțumim pentru încrederea acordată!
-          </p>
+
+      <div style="background: #fff; font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #e9ecef;">
+        <!-- Header + Logo -->
+        <div style="background: #fff; padding: 32px 0 0 0; position: relative;">
+          <img src='https://screenshield.ro/logoscreenshield.png' alt="ScreenShield Logo" style="display: block; margin: 0 auto 12px auto; max-width: 220px; height: auto;"/>
         </div>
-
-        <!-- MESAJ PRINCIPAL -->
-        <div style="padding:40px 30px 20px 30px;background:#fff;">
-          <div style="background:#f8f9fa;border-left:4px solid #ff7f2a;padding:20px;border-radius:8px;margin-bottom:30px;">
-            <p style="font-size:16px;color:#333;line-height:1.6;margin:0;">
-              <strong>Salut ${order.details.fullName.split(' ')[0]}!</strong><br>
-              Comanda ta a fost procesată cu succes și este în curs de pregătire. 
-              Odată ce coletul este predat la curier, vei primi un email cu numărul de urmărire.
-            </p>
-          </div>
-
-          <!-- FACTURA -->
-          ${
-            order.oblioInvoiceUrl
-              ? `<div style="background:#e8f5e8;border:1px solid #28a745;border-radius:8px;padding:20px;margin-bottom:30px;">
-                  <h3 style="color:#155724;margin:0 0 10px 0;font-size:18px;">📄 Factura Fiscală</h3>
-                  <p style="color:#155724;margin:0 0 15px 0;font-size:14px;">
-                    ${attachments.length > 0
-                      ? "Factura este atașată acestui email."
-                      : "Poți descărca factura din link-ul de mai jos."}
-                  </p>
-                  ${
-                    attachments.length === 0
-                      ? `<a href="${order.oblioInvoiceUrl}" style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px;">
-                         📥 Descarcă Factura
-                       </a>`
-                      : ""
-                  }
-                </div>`
-              : ""
-          }
-
-          <!-- CONTACT -->
-          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:20px;margin-bottom:30px;">
-            <h3 style="color:#856404;margin:0 0 10px 0;font-size:18px;">📞 Ai întrebări?</h3>
-            <p style="color:#856404;margin:0;font-size:14px;line-height:1.5;">
-              Ne poți contacta la:<br>
-              <strong>📧 Email:</strong> contact@screenshield.ro<br>
-              <strong>📱 WhatsApp:</strong> +40 123 456 789
-            </p>
-          </div>
+        <!-- Bara portocalie titlu -->
+        <div style="background: #ff7f2a; color: #fff; text-align: center; font-size: 1.5rem; font-weight: bold; padding: 14px 0; border-radius: 24px; margin: 24px 32px 0 32px; letter-spacing: 1px;">COMANDA PLASATĂ CU SUCCES</div>
+        <div style="padding: 32px 32px 0 32px; color: #222; font-size: 1rem;">
+          <p style="margin-bottom: 18px;">Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii. Puteți verifica statusul comenzii dumneavoastră prin conectare la contul personal.</p>
+          <p style="margin-bottom: 18px;">Dacă aveți întrebări referitoare la comanda dumneavoastră, ne puteți trimite email la <a href="mailto:contact@screenshield.ro" style="color: #ff7f2a; text-decoration: underline;">contact@screenshield.ro</a> sau pe WhatsApp la <a href="tel:+40123456789" style="color: #ff7f2a; text-decoration: underline;">+40 123 456 789</a>.</p>
         </div>
-
-        <!-- DETALII COMANDĂ -->
-        <div style="background:#f8f9fa;padding:30px;">
-          <h2 style="color:#333;font-size:22px;margin:0 0 25px 0;text-align:center;font-weight:600;">
-            📋 DETALII COMANDĂ
-          </h2>
-          
-          <!-- NUMĂR COMANDĂ -->
-          <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;border:1px solid #e9ecef;">
-            <h3 style="color:#ff7f2a;margin:0 0 15px 0;font-size:18px;">🔢 Număr Comandă</h3>
-            <p style="font-size:24px;font-weight:700;color:#333;margin:0;text-align:center;">${order.orderNumber}</p>
-          </div>
-
-          <!-- PRODUSE -->
-          <div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px;border:1px solid #e9ecef;">
-            <h3 style="color:#ff7f2a;margin:0 0 15px 0;font-size:18px;">🛍️ Produse Comandate</h3>
-            ${order.items
-              .map(
-                (item) => `
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f1f3f4;">
-                <div style="flex:1;">
-                  <p style="font-weight:600;color:#333;margin:0 0 5px 0;font-size:15px;">${item.product.name}</p>
-                  <p style="color:#666;margin:0;font-size:13px;">Mărime: ${item.size} | Cantitate: ${item.quantity}</p>
-                </div>
-                <div style="text-align:right;">
-                  <p style="font-weight:600;color:#333;margin:0;font-size:15px;">${item.price.toLocaleString('ro-RO')} RON</p>
-                </div>
-              </div>
-            `
-              )
-              .join("")}
-          </div>
-
-          <!-- TOTAL -->
-          <div style="background:#ff7f2a;color:#fff;border-radius:8px;padding:20px;margin-bottom:20px;text-align:center;">
-            <h3 style="margin:0 0 10px 0;font-size:18px;">💰 Total Comandă</h3>
-            <p style="font-size:28px;font-weight:700;margin:0;">${order.total.toLocaleString('ro-RO')} RON</p>
-            <p style="margin:10px 0 0 0;font-size:14px;opacity:0.9;">
-              Metoda de plată: ${order.paymentType === "card" ? "💳 Card bancar" : "💵 Ramburs"}
-            </p>
-          </div>
-
-          <!-- ADRESĂ LIVRARE -->
-          <div style="background:#fff;border-radius:8px;padding:20px;border:1px solid #e9ecef;">
-            <h3 style="color:#ff7f2a;margin:0 0 15px 0;font-size:18px;">📍 Adresa de Livrare</h3>
-            <div style="background:#f8f9fa;border-radius:6px;padding:15px;">
-              <p style="font-weight:600;color:#333;margin:0 0 8px 0;font-size:15px;">${order.details.fullName}</p>
-              <p style="color:#666;margin:0 0 5px 0;font-size:14px;">${order.details.street}${order.details.streetNumber ? ` ${order.details.streetNumber}` : ''}</p>
-              <p style="color:#666;margin:0 0 5px 0;font-size:14px;">${order.details.city}, ${order.details.county}</p>
-              <p style="color:#666;margin:0 0 5px 0;font-size:14px;">${order.details.postalCode || ''}</p>
-              <p style="color:#666;margin:0;font-size:14px;">📞 ${order.details.phoneNumber}</p>
-            </div>
-          </div>
+        <!-- Bara portocalie detalii -->
+        <div style="background: #ff7f2a; color: #fff; text-align: center; font-size: 1.2rem; font-weight: bold; padding: 10px 0; border-radius: 24px; margin: 32px 32px 0 32px; letter-spacing: 1px;">DETALII COMANDĂ</div>
+        <div style="padding: 24px 32px 32px 32px; color: #222; font-size: 1rem;">
+          <div style="margin-bottom: 10px;">Număr de comandă: <strong>${order.orderNumber}</strong></div>
+          <div style="margin-bottom: 10px;">Detalii comandă: <strong>${order.items.map(item => `${item.quantity}x ${item.product.name} (${item.size})`).join(', ')}</strong></div>
+          <div style="margin-bottom: 10px;">Sumă: <strong>${order.total.toFixed(2)} RON</strong></div>
+          <div style="margin-bottom: 10px;">Adresă de livrare: <strong>${order.details.street}, ${order.details.city}, ${order.details.county} ${order.details.postalCode}, ${order.details.country}</strong></div>
         </div>
+        <div style="background: #f5f5f5; padding: 16px 0; text-align: center; color: #888; font-size: 0.9rem; border-top: 1px solid #e9ecef;">&copy; ${new Date().getFullYear()} ScreenShield</div>
 
-        <!-- FOOTER -->
-        <div style="background:#333;color:#fff;text-align:center;padding:30px 20px;">
-          <p style="margin:0 0 10px 0;font-size:16px;font-weight:600;">Screen Shield</p>
-          <p style="margin:0 0 15px 0;font-size:14px;opacity:0.8;">Protejăm mașinile tale cu pasiune</p>
-          <div style="border-top:1px solid #555;padding-top:15px;">
-            <p style="margin:0;font-size:12px;opacity:0.6;">
-              © 2024 Screen Shield. Toate drepturile rezervate.
-            </p>
-          </div>
-        </div>
       </div>
     `;
 
@@ -666,7 +557,11 @@ export async function sendNewsletterEmail(
   content: string
 ): Promise<void | ErrorResponse> {
   try {
-    // ... existing code ...
+    const result = await sendEmail(email, subject, content);
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to send newsletter email");
+    }
   } catch (error) {
     console.error("Error sending newsletter email:", error);
     return {
