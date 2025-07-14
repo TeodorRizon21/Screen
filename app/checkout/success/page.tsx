@@ -6,7 +6,6 @@ import { sendAdminNotification, sendOrderConfirmation } from "@/lib/email";
 import { Prisma, Order, OrderItem } from "@prisma/client";
 import { createDPDShipmentForOrder } from "@/lib/dpd";
 import { generateOrderNumber } from "@/lib/orderNumber";
-import { generateOblioInvoice } from "@/lib/oblio";
 
 interface OrderProduct {
   id: string;
@@ -21,10 +20,6 @@ interface OrderDetails {
   email: string;
   phoneNumber: string;
   street: string;
-  streetNumber?: string;
-  block?: string | null;
-  floor?: string | null;
-  apartment?: string | null;
   city: string;
   county: string;
   postalCode: string;
@@ -86,7 +81,7 @@ export default async function CheckoutSuccessPage({
           throw new Error("Order payment type is missing");
         }
         return (
-          <SuccessContent orderId={order.id} paymentType={order.paymentType || 'unknown'} />
+          <SuccessContent orderId={order.id} paymentType={order.paymentType} />
         );
       }
 
@@ -199,70 +194,16 @@ export default async function CheckoutSuccessPage({
         // Nu aruncăm eroarea mai departe pentru a nu întrerupe fluxul comenzii
       }
 
-      // Generăm automat factura Oblio pentru toate comenzile
+      // Send emails only after successful order creation
       try {
-        console.log("=== ÎNCEPERE GENERARE FACTURĂ OBLIO ===");
-        console.log("Comanda ID:", order.id);
-        console.log("Order Number:", order.orderNumber);
-        console.log("Total:", order.total);
-
-        // Transformăm datele comenzii în formatul necesar pentru Oblio
-        const oblioInvoiceData = {
-          cif: order.details.cui || "RO00000000", // CUI-ul clientului sau unul default
-          nume: order.details.fullName,
-          email: order.details.email,
-          telefon: order.details.phoneNumber,
-          adresa: order.details.street,
-          oras: order.details.city,
-          judet: order.details.county || "București",
-          codPostal: order.details.postalCode || "000000",
-          tara: "România",
-          items: order.items.map((item) => ({
-            nume: item.product.name,
-            pret: item.price,
-            cantitate: item.quantity,
-            um: "buc",
-          })),
-          total: order.total,
-          orderNumber: order.orderNumber,
-          orderDate: new Date().toISOString().split("T")[0],
-        };
-
-        console.log(
-          "Datele pentru Oblio:",
-          JSON.stringify(oblioInvoiceData, null, 2)
-        );
-
-        const invoiceResult = await generateOblioInvoice(oblioInvoiceData);
-
-        console.log("Rezultatul generării facturii:", invoiceResult);
-
-        // Actualizăm comanda cu ID-ul facturii Oblio
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            oblioInvoiceId: invoiceResult.invoiceId,
-            oblioInvoiceNumber: invoiceResult.invoiceNumber,
-            oblioInvoiceUrl: invoiceResult.pdfUrl,
-          },
-        });
-
-        console.log("Comanda actualizată cu ID-ul facturii Oblio");
-        console.log("=== FINALIZARE GENERARE FACTURĂ OBLIO ===");
-      } catch (error) {
-        console.error("=== EROARE LA GENERAREA FACTURII OBLIO ===");
-        console.error("Eroare completă:", error);
-        console.error(
-          "Stack trace:",
-          error instanceof Error ? error.stack : "No stack trace"
-        );
-        console.error("=== SFÂRȘIT EROARE ===");
-        // Nu întrerupem procesul dacă factura nu se poate genera
+        await Promise.all([
+          sendAdminNotification(order as OrderWithItems),
+          sendOrderConfirmation(order as OrderWithItems),
+        ]);
+      } catch (emailError) {
+        console.error("Error sending emails:", emailError);
+        // Don't throw the error as the order was still created successfully
       }
-
-      // Pentru plățile cu cardul, emailurile se trimit din webhook-ul Stripe
-      // Nu trimitem emailuri aici pentru a evita duplicarea
-      console.log("Comanda cu card creată - emailurile se vor trimite din webhook-ul Stripe");
     } else if (orderId) {
       // For cash on delivery orders
       order = await prisma.$transaction(
@@ -340,77 +281,8 @@ export default async function CheckoutSuccessPage({
             }
           }
 
-          // Generăm automat factura Oblio pentru comenzile cu ramburs
-          try {
-            console.log("=== ÎNCEPERE GENERARE FACTURĂ OBLIO (RAMBURS) ===");
-            console.log("Comanda ID:", existingOrder.id);
-            console.log("Order Number:", existingOrder.orderNumber);
-            console.log("Total:", existingOrder.total);
-
-            // Transformăm datele comenzii în formatul necesar pentru Oblio
-            const oblioInvoiceData = {
-              cif: existingOrder.details.cui || "RO00000000",
-              nume: existingOrder.details.fullName,
-              email: existingOrder.details.email,
-              telefon: existingOrder.details.phoneNumber,
-              adresa: existingOrder.details.street,
-              oras: existingOrder.details.city,
-              judet: existingOrder.details.county || "București",
-              codPostal: existingOrder.details.postalCode || "000000",
-              tara: "România",
-              items: existingOrder.items.map((item) => ({
-                nume: item.product.name,
-                pret: item.price,
-                cantitate: item.quantity,
-                um: "buc",
-              })),
-              total: existingOrder.total,
-              orderNumber: existingOrder.orderNumber,
-              orderDate: new Date().toISOString().split("T")[0],
-            };
-
-            console.log(
-              "Datele pentru Oblio (ramburs):",
-              JSON.stringify(oblioInvoiceData, null, 2)
-            );
-
-            const invoiceResult = await generateOblioInvoice(oblioInvoiceData);
-
-            console.log(
-              "Rezultatul generării facturii (ramburs):",
-              invoiceResult
-            );
-
-            // Actualizăm comanda cu ID-ul facturii Oblio
-            await tx.order.update({
-              where: { id: existingOrder.id },
-              data: {
-                oblioInvoiceId: invoiceResult.invoiceId,
-                oblioInvoiceNumber: invoiceResult.invoiceNumber,
-                oblioInvoiceUrl: invoiceResult.pdfUrl,
-              },
-            });
-
-            console.log(
-              "Comanda actualizată cu ID-ul facturii Oblio (ramburs)"
-            );
-            console.log("=== FINALIZARE GENERARE FACTURĂ OBLIO (RAMBURS) ===");
-          } catch (error) {
-            console.error(
-              "=== EROARE LA GENERAREA FACTURII OBLIO (RAMBURS) ==="
-            );
-            console.error("Eroare completă:", error);
-            console.error(
-              "Stack trace:",
-              error instanceof Error ? error.stack : "No stack trace"
-            );
-            console.error("=== SFÂRȘIT EROARE ===");
-            // Nu întrerupem procesul dacă factura nu se poate genera
-          }
-
           // Send emails only after confirming the order exists
           try {
-
             // Skip sending emails for "ramburs" orders as they are already sent in create-order
             if (
               existingOrder.orderNumber &&
@@ -446,7 +318,6 @@ export default async function CheckoutSuccessPage({
                 ]);
               }
             }
-
           } catch (emailError) {
             console.error("Error sending emails:", emailError);
             // Don't throw the error as the order was still created successfully
@@ -466,7 +337,7 @@ export default async function CheckoutSuccessPage({
     }
 
     return (
-      <SuccessContent orderId={order.id} paymentType={order.paymentType || 'unknown'} />
+      <SuccessContent orderId={order.id} paymentType={order.paymentType} />
     );
   } catch (error) {
     console.error("Error processing order:", error);
