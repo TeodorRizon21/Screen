@@ -127,32 +127,62 @@ export async function POST(req: Request) {
         // Comanda a fost creată cu succes, vom încerca să creăm expedierea manual
       }
 
+      // Reîncărcăm comanda completă din baza de date pentru a ne asigura că avem toate datele actualizate
+      let completeOrder = await prisma.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  images: true,
+                  weight: true
+                }
+              }
+            }
+          },
+          details: true,
+          discountCodes: {
+            include: {
+              discountCode: true
+            }
+          }
+        }
+      });
+
+      if (!completeOrder) {
+        throw new Error('Order was created but could not be fetched');
+      }
+
       // Generăm automat factura Oblio pentru toate comenzile
       try {
         console.log('=== ÎNCEPERE GENERARE FACTURĂ OBLIO ===');
-        console.log('Comanda ID:', order.id);
-        console.log('Order Number:', order.orderNumber);
-        console.log('Total:', order.total);
+        console.log('Comanda ID:', completeOrder.id);
+        console.log('Order Number:', completeOrder.orderNumber);
+        console.log('Total:', completeOrder.total);
         
         // Transformăm datele comenzii în formatul necesar pentru Oblio
         const oblioInvoiceData = {
-          cif: order.details.cif || 'RO00000000', // CIF-ul clientului sau unul default
-          nume: order.details.fullName,
-          email: order.details.email,
-          telefon: order.details.phoneNumber,
-          adresa: order.details.street + (order.details.streetNumber ? ` ${order.details.streetNumber}` : ''),
-          oras: order.details.city,
-          judet: order.details.county || 'București',
-          codPostal: order.details.postalCode || '000000',
+          cif: completeOrder.details.cif || 'RO00000000', // CIF-ul clientului sau unul default
+          nume: completeOrder.details.fullName,
+          email: completeOrder.details.email,
+          telefon: completeOrder.details.phoneNumber,
+          adresa: completeOrder.details.street + (completeOrder.details.streetNumber ? ` ${completeOrder.details.streetNumber}` : ''),
+          oras: completeOrder.details.city,
+          judet: completeOrder.details.county || 'București',
+          codPostal: completeOrder.details.postalCode || '000000',
           tara: 'România',
-          items: order.items.map(item => ({
+          items: completeOrder.items.map(item => ({
             nume: item.product.name,
             pret: item.price,
             cantitate: item.quantity,
             um: 'buc'
           })),
-          total: order.total,
-          orderNumber: order.orderNumber,
+          total: completeOrder.total,
+          orderNumber: completeOrder.orderNumber,
           orderDate: new Date().toISOString().split('T')[0]
         };
         
@@ -164,7 +194,7 @@ export async function POST(req: Request) {
         
         // Actualizăm comanda cu ID-ul facturii Oblio
         await prisma.order.update({
-          where: { id: order.id },
+          where: { id: completeOrder.id },
           data: {
             oblioInvoiceId: invoiceResult.invoiceId,
             oblioInvoiceNumber: invoiceResult.invoiceNumber,
@@ -184,12 +214,12 @@ export async function POST(req: Request) {
 
       // Send notifications
       try {
-        if (order.orderNumber) {
+        if (completeOrder.orderNumber) {
           // Cast to the expected type for email functions
           const orderForEmail = {
-            ...order,
-            orderNumber: order.orderNumber,
-            paymentType: order.paymentType || 'card'
+            ...completeOrder,
+            orderNumber: completeOrder.orderNumber,
+            paymentType: completeOrder.paymentType || 'card'
           } as any
           // Trimitem notificare către admin
           await sendAdminNotification(orderForEmail);
