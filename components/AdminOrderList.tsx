@@ -60,6 +60,8 @@ type OrderDetails = {
   county: string;
   postalCode: string;
   country: string;
+  locationType?: string;
+  commune?: string | null;
   notes?: string;
 };
 
@@ -215,7 +217,10 @@ function OrderCard({
                       {order.details.block && `, Bloc ${order.details.block}`}
                       {order.details.floor && `, Etaj ${order.details.floor}`}
                       {order.details.apartment && `, Ap ${order.details.apartment}`}
-                      , {order.details.city}, {order.details.county}
+                      , {order.details.locationType === 'village' && order.details.commune 
+                        ? `${order.details.city}, ${order.details.commune}, ${order.details.county}`
+                        : `${order.details.city}, ${order.details.county}`
+                      }
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Cod Poștal:</span>{" "}

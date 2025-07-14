@@ -31,6 +31,43 @@ export async function POST(
       return acc + (item.product.weight || 1) * item.quantity;
     }, 0);
 
+    // Găsim site ID pentru oraș
+    const siteId = await dpdClient.findSite(642, order.details.city.toUpperCase(), order.details.postalCode);
+    if (!siteId) {
+      throw new Error(`Nu am putut găsi orașul ${order.details.city} în sistemul DPD`);
+    }
+
+    // Găsim street ID cu logica de bypass
+    const streetName = order.details.street.trim().toUpperCase();
+    let streetId = await dpdClient.findStreet(siteId, streetName);
+    
+    if (!streetId) {
+      console.log(`⚠️ Strada ${streetName} nu a fost găsită în sistemul DPD. Încercăm să folosim o stradă generică.`);
+      
+      // Încercăm să găsim o stradă generică
+      try {
+        streetId = await dpdClient.findStreet(siteId, "PRINCIPALĂ");
+        if (!streetId) {
+          streetId = await dpdClient.findStreet(siteId, "CENTRALĂ");
+        }
+        if (!streetId) {
+          streetId = await dpdClient.findStreet(siteId, "1 DECEMBRIE");
+        }
+        if (!streetId) {
+          streetId = await dpdClient.findStreet(siteId, "REPUBLICII");
+        }
+        
+        if (streetId) {
+          console.log(`✅ Am găsit o stradă alternativă cu ID: ${streetId}. Strada originală ${streetName} va fi specificată în note.`);
+        } else {
+          throw new Error(`Nu am putut găsi nicio stradă validă în sistemul DPD pentru ${order.details.city}`);
+        }
+      } catch (alternativeStreetError) {
+        console.error('Eroare la căutarea străzii alternative:', alternativeStreetError);
+        throw new Error(`Nu am putut găsi strada ${streetName} în sistemul DPD și nu am putut găsi o stradă alternativă`);
+      }
+    }
+
     // Pregătim datele pentru cererea către DPD
     const shipmentData = {
       sender: {
@@ -49,11 +86,8 @@ export async function POST(
         privatePerson: true,
         address: {
           countryId: 642, // ID-ul pentru România
-          siteId: await dpdClient.findSite(642, order.details.city.toUpperCase()),
-          streetId: await dpdClient.findStreet(
-            await dpdClient.findSite(642, order.details.city.toUpperCase()),
-            order.details.street.trim().toUpperCase()
-          ),
+          siteId,
+          streetId,
           streetNo: order.details.streetNumber || (() => {
             const streetMatch = order.details.street.match(/\d+/);
             return streetMatch ? streetMatch[0] : '1';

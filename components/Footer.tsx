@@ -108,9 +108,12 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={18} className="text-gray-700" />
-                <span className="text-sm text-gray-700">
-                contact.screenshield@gmail.com
-                </span>
+                <a
+                  href="mailto:contact.screenshield@gmail.com"
+                  className="text-sm text-gray-700 hover:text-black transition-colors"
+                >
+                  contact.screenshield@gmail.com
+                </a>
               </div>
             </div>
           </div>

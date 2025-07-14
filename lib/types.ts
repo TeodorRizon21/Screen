@@ -3,14 +3,23 @@ import { OrderItem, OrderDetails, OrderDiscountCode, DiscountCode, Product as Pr
 export interface Product {
   id: string;
   name: string;
-  description?: string;
+  description: string;
   price: number;
+  oldPrice?: number | null;
   images: string[];
-  category?: string;
-  make?: string;
-  model?: string;
-  year?: string;
-  tags?: string[];
+  sizes: string[];
+  collections: string[];
+  stock: number;
+  allowOutOfStock: boolean;
+  lowStockThreshold?: number | null;
+  showStockLevel: boolean;
+  weight: number;
+  createdAt: Date;
+  updatedAt: Date;
+  make?: string | null;
+  model?: string | null;
+  generation?: string | null;
+  compatibleCars?: any;
 }
 
 export interface SizeVariant {

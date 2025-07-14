@@ -185,6 +185,8 @@ export async function POST(req: Request) {
           county: orderDetails.county,
           postalCode: orderDetails.postalCode,
           country: orderDetails.country,
+          locationType: orderDetails.locationType || 'city',
+          commune: orderDetails.commune || null,
           isCompany: orderDetails.isCompany,
           companyName: orderDetails.companyName,
           cui: orderDetails.cui,

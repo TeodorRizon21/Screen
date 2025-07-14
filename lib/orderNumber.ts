@@ -47,9 +47,11 @@ export async function generateOrderNumber(): Promise<string> {
       if (secondLastChar === 'Z') {
         throw new Error('Maximum order number reached (SSZZ9999)');
       }
+      // Incrementăm al treilea caracter și resetăm ultimul la 'A'
       return `SS${String.fromCharCode(secondLastChar.charCodeAt(0) + 1)}A0001`;
     }
-    return `${prefix.slice(0, -1)}${String.fromCharCode(lastChar.charCodeAt(0) + 1)}0001`;
+    // Incrementăm doar ultimul caracter
+    return `SS${secondLastChar}${String.fromCharCode(lastChar.charCodeAt(0) + 1)}0001`;
   }
 
   throw new Error('Invalid order number format');

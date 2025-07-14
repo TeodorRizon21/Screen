@@ -39,6 +39,8 @@ type OrderDetails = {
   county: string;
   postalCode: string;
   country: string;
+  locationType?: string;
+  commune?: string | null;
   notes?: string;
 };
 
@@ -395,8 +397,10 @@ export default function OrdersContent({ userId }: { userId: string }) {
                             `, Ap ${order.details.apartment}`}
                         </p>
                         <p className="text-sm">
-                          {order.details.city}, {order.details.county}{" "}
-                          {order.details.postalCode}
+                          {order.details.locationType === 'village' && order.details.commune 
+                            ? `${order.details.city}, ${order.details.commune}, ${order.details.county} ${order.details.postalCode}`
+                            : `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
+                          }
                         </p>
                         <p className="text-sm">{order.details.country}</p>
                         {order.details.notes && (
