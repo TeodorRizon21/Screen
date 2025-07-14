@@ -19,7 +19,7 @@ export interface Product {
   make?: string | null;
   model?: string | null;
   generation?: string | null;
-  compatibleCars?: any;
+  compatibleCars?: unknown;
 }
 
 export interface SizeVariant {

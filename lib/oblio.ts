@@ -1,6 +1,5 @@
 // Configurația pentru Oblio API
-const OblioApi = require('@obliosoftware/oblioapi').default;
-const { AccessTokenHandlerFileStorage } = require('@obliosoftware/oblioapi');
+import * as OblioApiModule from '@obliosoftware/oblioapi';
 
 // Funcție pentru a obține instanța Oblio API cu variabilele de mediu curente
 function getOblioApi() {
@@ -22,9 +21,9 @@ function getOblioApi() {
     apiSecret: apiSecret ? `${apiSecret.substring(0, 4)}...` : 'UNDEFINED'
   });
   
-  // Constructorul așteaptă: email, apiSecret, accessTokenHandler
-  const accessTokenHandler = new AccessTokenHandlerFileStorage();
-  return new OblioApi(email, apiSecret, accessTokenHandler);
+  // Constructorul așteaptă: email, apiSecret, accessTokenHandler (opțional)
+  // Dacă nu specificăm accessTokenHandler, se va folosi AccessTokenHandlerFileStorage implicit
+  return new (OblioApiModule as unknown as { default: new (email: string, secret: string) => any }).default(email, apiSecret);
 }
 
 export interface OblioInvoiceData {
@@ -105,7 +104,7 @@ export async function generateOblioInvoice(invoiceData: OblioInvoiceData & { isC
     const clientPhone = invoiceData.telefon;
 
     const seriesName = process.env.OBLIO_SERIES_NAME || 'SS';
-    const data: any = {
+    const data: Record<string, unknown> = {
       cif: process.env.COMPANY_CIF, // CIF-ul firmei tale (emitent)
       client: {
         cif: clientCif,
