@@ -21,6 +21,8 @@ export async function POST(req: Request) {
       county, 
       postalCode, 
       country, 
+      locationType,
+      commune,
       notes,
       userId,
       isCompany,
@@ -40,10 +42,15 @@ export async function POST(req: Request) {
     if (!phoneNumber) missingFields.push('Numarul de telefon');
     if (!street) missingFields.push('Strada');
     // streetNumber is now optional
-    if (!city) missingFields.push('Orasul');
+    if (!city) missingFields.push('Orasul/Satul');
     if (!county) missingFields.push('Judetul');
     if (!postalCode) missingFields.push('Codul postal');
     if (!country) missingFields.push('Tara');
+    
+    // Validate commune if locationType is village
+    if (locationType === 'village' && !commune) {
+      missingFields.push('Comuna');
+    }
 
     // Validate company fields if isCompany is true
     if (isCompany) {
@@ -98,6 +105,8 @@ export async function POST(req: Request) {
         county,
         postalCode,
         country,
+        locationType: locationType || 'city',
+        commune: commune || null,
         notes: notes || '',
         isCompany,
         companyName: isCompany ? companyName : null,

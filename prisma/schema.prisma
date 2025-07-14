@@ -83,6 +83,8 @@ model OrderDetails {
   county        String
   postalCode    String
   country       String
+  commune       String?  // Comuna pentru sate
+  locationType  String?  // "city" sau "village" pentru a distinge între oraș și sat
   cif           String? // CIF-ul clientului pentru facturare
   notes         String?
   createdAt     DateTime @default(now())

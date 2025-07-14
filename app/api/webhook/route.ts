@@ -29,6 +29,8 @@ interface OrderDetails {
   county: string;
   postalCode: string;
   country: string;
+  locationType?: string | null;
+  commune?: string | null;
   isCompany: boolean;
   companyName?: string | null;
   cui?: string | null;
@@ -114,7 +116,11 @@ export async function POST(req: Request) {
       try {
         console.log('Încercăm să creăm expedierea DPD pentru comanda:', order.id);
         const updatedOrder = await createDPDShipmentForOrder(order, order.details);
-        console.log('Expediere DPD creată cu succes, AWB:', updatedOrder.awb);
+        if (updatedOrder) {
+          console.log('Expediere DPD creată cu succes, AWB:', updatedOrder.awb);
+        } else {
+          console.log('Nu s-a putut crea expedierea DPD, dar comanda continuă.');
+        }
       } catch (dpdError: any) {
         console.error('Eroare la crearea expedierii DPD:', dpdError);
         // Nu aruncăm eroarea mai departe, doar o logăm
@@ -134,7 +140,7 @@ export async function POST(req: Request) {
           nume: order.details.fullName,
           email: order.details.email,
           telefon: order.details.phoneNumber,
-          adresa: order.details.street,
+          adresa: order.details.street + (order.details.streetNumber ? ` ${order.details.streetNumber}` : ''),
           oras: order.details.city,
           judet: order.details.county || 'București',
           codPostal: order.details.postalCode || '000000',
@@ -178,10 +184,20 @@ export async function POST(req: Request) {
 
       // Send notifications
       try {
-        // Trimitem notificare către admin
-        await sendAdminNotification(order);
-        // Trimitem confirmare către client
-        await sendOrderConfirmation(order);
+        if (order.orderNumber) {
+          // Cast to the expected type for email functions
+          const orderForEmail = {
+            ...order,
+            orderNumber: order.orderNumber,
+            paymentType: order.paymentType || 'card'
+          } as any
+          // Trimitem notificare către admin
+          await sendAdminNotification(orderForEmail);
+          // Trimitem confirmare către client
+          await sendOrderConfirmation(orderForEmail);
+        } else {
+          console.error('Order number is null, skipping email notifications');
+        }
       } catch (emailError) {
         console.error('Error sending notifications:', emailError);
       }

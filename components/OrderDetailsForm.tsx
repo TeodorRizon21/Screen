@@ -48,12 +48,14 @@ const formSchema = z
     block: z.string().optional(),
     floor: z.string().optional(),
     apartment: z.string().optional(),
-    city: z.string().min(2, "Orasul trebuie sa aiba cel putin 2 caractere"),
+    city: z.string().min(2, "Orașul/Satul trebuie sa aiba cel putin 2 caractere"),
     county: z.string().min(2, "Judetul trebuie sa aiba cel putin 2 caractere"),
     postalCode: z
       .string()
       .min(5, "Codul postal trebuie sa aiba cel putin 5 caractere"),
     country: z.string().min(2, "Tara trebuie sa aiba cel putin 2 caractere"),
+    locationType: z.enum(["city", "village"]).default("city"),
+    commune: z.string().optional(),
     notes: z.string().optional(),
 
     // Metoda plata
@@ -78,6 +80,18 @@ const formSchema = z
         message: "Trebuie sa accepti termenii si conditiile pentru a continua",
       }),
   })
+  .refine(
+    (data) => {
+      if (data.locationType === "village" && !data.commune) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: "Pentru sate, comuna este obligatorie",
+      path: ["commune"],
+    }
+  )
   .refine(
     (data) => {
       if (data.isCompany) {
@@ -110,6 +124,7 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
   const [isCompany, setIsCompany] = useState(false);
+  const [locationType, setLocationType] = useState<"city" | "village">("city");
   const {
     shippingPrice,
     isLoading: isLoadingShipping,
@@ -136,6 +151,8 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
       county: "",
       postalCode: "",
       country: "Romania",
+      locationType: "city",
+      commune: "",
       notes: "",
       paymentType: "card",
       rememberDetails: false,
@@ -622,13 +639,52 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                   )}
                 />
               </div>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  <FormField
+                    control={form.control}
+                    name="locationType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              setLocationType(value as "city" | "village");
+                              if (value === "city") {
+                                form.setValue("commune", "");
+                              }
+                            }}
+                            defaultValue={field.value}
+                            className="flex space-x-4"
+                          >
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="city" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Oraș</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="village" />
+                              </FormControl>
+                              <FormLabel className="font-normal">Sat</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Oraș*</FormLabel>
+                        <FormLabel>{locationType === "city" ? "Oraș*" : "Sat*"}</FormLabel>
                       <FormControl>
                         <Input {...field} className="bg-white" />
                       </FormControl>
@@ -649,6 +705,23 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     </FormItem>
                   )}
                 />
+                </div>
+                
+                {locationType === "village" && (
+                  <FormField
+                    control={form.control}
+                    name="commune"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Comună*</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white" placeholder="ex: Comuna X" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField

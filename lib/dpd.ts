@@ -281,18 +281,33 @@ class DPDClient {
     return response.countries[0]?.id;
   }
 
-  async findSite(countryId: number, name: string): Promise<number> {
-    console.log('🔍 Finding site:', { countryId, name });
+  async findSite(countryId: number, name: string, postalCode?: string): Promise<number | null> {
+    console.log('🔍 Finding site:', { countryId, name, postalCode });
     const response = await this.makeRequest<any>('/location/site', { countryId, name });
     console.log('📍 Site search result:', response);
+    
+    if (!response.sites || response.sites.length === 0) {
+      return null;
+    }
+    
+    // Dacă avem cod poștal, încercăm să găsim site-ul care se potrivește
+    if (postalCode && response.sites.length > 1) {
+      const matchingSite = response.sites.find((site: any) => site.postCode === postalCode);
+      if (matchingSite) {
+        console.log(`✅ Găsit site-ul corect pentru codul poștal ${postalCode}:`, matchingSite.name);
+        return matchingSite.id;
+      }
+    }
+    
+    // Dacă nu găsim potrivirea exactă, returnăm primul site
     return response.sites[0]?.id;
   }
 
-  async findStreet(siteId: number, name: string): Promise<number> {
+  async findStreet(siteId: number, name: string): Promise<number | null> {
     const cleanedStreetName = cleanStreetName(name);
     console.log('🔍 Finding street with cleaned name:', { original: name, cleaned: cleanedStreetName });
     const response = await this.makeRequest<any>('/location/street', { siteId, name: cleanedStreetName });
-    return response.streets[0]?.id;
+    return response.streets?.[0]?.id || null;
   }
 
   async findOffice(countryId: number, siteId: number): Promise<number> {
@@ -418,7 +433,7 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
     console.log('=== Starting DPD shipment creation ===');
     console.log('Order details:', {
       id: order.id,
-      items: order.items.length,
+      items: order.items?.length || 0,
       recipient: orderDetails.fullName,
       city: orderDetails.city,
       street: orderDetails.street
@@ -436,7 +451,7 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
     // Folosim ID-ul confirmat pentru România
     const countryId = 642;
     console.log('Căutăm ID-ul pentru orașul:', orderDetails.city);
-    const siteId = await dpdClient.findSite(countryId, orderDetails.city.toUpperCase());
+    const siteId = await dpdClient.findSite(countryId, orderDetails.city.toUpperCase(), orderDetails.postalCode);
     
     if (!siteId) {
       throw new Error(`Nu am putut găsi orașul ${orderDetails.city} în sistemul DPD`);
@@ -446,31 +461,51 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
     // Folosim numele străzii direct din câmpul street
     const streetName = orderDetails.street.trim().toUpperCase();
     console.log('Căutăm ID-ul pentru strada:', streetName);
-    const streetId = await dpdClient.findStreet(siteId, streetName);
     
-    if (!streetId) {
-      throw new Error(`Nu am putut găsi strada ${streetName} în sistemul DPD`);
-    }
-    console.log('Street ID găsit:', streetId);
-
-    // Folosim numărul străzii din câmpul streetNumber sau extragem din street
+    // Extragem numărul străzii înainte de a verifica strada
     let streetNo = orderDetails.streetNumber || '1';
     if (!orderDetails.streetNumber && orderDetails.street) {
       const streetMatch = orderDetails.street.match(/\d+/);
       streetNo = streetMatch ? streetMatch[0] : '1';
     }
     console.log('Număr stradă extras:', streetNo);
+    
+    let streetId: number | null = await dpdClient.findStreet(siteId, streetName);
+    
+    if (!streetId) {
+      console.log(`⚠️ Strada ${streetName} nu a fost găsită în sistemul DPD. Vom folosi "PRINCIPALĂ" ca stradă default.`);
+      
+      // Folosim "PRINCIPALĂ" ca stradă default
+      streetId = await dpdClient.findStreet(siteId, "PRINCIPALĂ");
+      
+      if (streetId) {
+        console.log(`✅ Am găsit strada "PRINCIPALĂ" cu ID: ${streetId}. Strada originală ${streetName} va fi specificată în note.`);
+        console.log(`📍 Numărul străzii original: ${streetNo} va fi folosit pentru "PRINCIPALĂ"`);
+      } else {
+        console.log(`⚠️ Nu am putut găsi nici "PRINCIPALĂ". Vom încerca să creăm expedierea fără streetId.`);
+        streetId = null;
+      }
+    } else {
+      console.log('Street ID găsit:', streetId);
+    }
 
-    // Calculăm greutatea totală a comenzii
-    const totalWeight = order.items.reduce((total: number, item: any) => {
-      const itemWeight = (item.product.weight || 0) * item.quantity;
-      console.log(`Greutate pentru ${item.product.name}: ${itemWeight}kg (${item.product.weight}kg x ${item.quantity})`);
-      return total + itemWeight;
-    }, 0);
+    // Verificăm dacă order.items există și are elemente
+    let totalWeight = 1; // Default weight
+    if (!order.items || !Array.isArray(order.items) || order.items.length === 0) {
+      console.log('⚠️ Order items nu există sau este gol. Folosim greutate default de 1kg.');
+    } else {
+      // Calculăm greutatea totală a comenzii
+      totalWeight = order.items.reduce((total: number, item: any) => {
+        const itemWeight = (item.product?.weight || 0) * item.quantity;
+        console.log(`Greutate pentru ${item.product?.name || 'Unknown'}: ${itemWeight}kg (${item.product?.weight || 0}kg x ${item.quantity})`);
+        return total + itemWeight;
+      }, 0);
 
-    console.log('Greutate totală calculată:', totalWeight);
+      console.log('Greutate totală calculată:', totalWeight);
+    }
 
-    const shipmentData = {
+    // Pregătim datele pentru expediere
+    const shipmentData: any = {
       sender: {
         phone1: {
           number: process.env.COMPANY_PHONE || '',
@@ -485,12 +520,6 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
         clientName: orderDetails.fullName,
         email: orderDetails.email,
         privatePerson: true,
-        address: {
-          countryId,
-          siteId,
-          streetId,
-          streetNo,
-        },
       },
       service: {
         serviceId: 2505, // CLASSIC service
@@ -499,7 +528,9 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
       content: {
         parcelsCount: 1,
         totalWeight: Math.max(1, totalWeight), // Minimum 1kg
-        contents: order.items.map((item: any) => item.product.name).join(', '),
+        contents: order.items && Array.isArray(order.items) && order.items.length > 0 
+          ? order.items.map((item: any) => item.product?.name || 'Unknown Product').join(', ')
+          : 'Produse ScreenShield',
         package: 'BOX',
       },
       payment: {
@@ -508,6 +539,53 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
       ref1: order.id,
       shipmentId: order.id,
     };
+
+    // Adăugăm adresa doar dacă avem streetId valid
+    if (streetId) {
+      shipmentData.recipient.address = {
+        countryId,
+        siteId,
+        streetId,
+        streetNo,
+      };
+    } else {
+      // Dacă nu avem streetId, folosim "PRINCIPALĂ" ca stradă default
+      console.log('Folosim "PRINCIPALĂ" ca stradă default...');
+      
+      try {
+        const principalStreetId = await dpdClient.findStreet(siteId, "PRINCIPALĂ");
+        if (principalStreetId) {
+          console.log(`✅ Am găsit strada "PRINCIPALĂ" cu ID: ${principalStreetId}`);
+          shipmentData.recipient.address = {
+            countryId,
+            siteId,
+            streetId: principalStreetId,
+            streetNo,
+          };
+          // Adăugăm adresa reală în note
+          shipmentData.content.contents += ` | Adresa reală: ${orderDetails.street} ${orderDetails.streetNumber}, ${orderDetails.city}, ${orderDetails.county}`;
+        } else {
+          console.log('⚠️ Nu am putut găsi "PRINCIPALĂ". Vom crea expedierea cu streetId = 0.');
+          shipmentData.recipient.address = {
+            countryId,
+            siteId,
+            streetId: 0,
+            streetNo: streetNo, // Folosim numărul real extras din input
+          };
+          shipmentData.content.contents += ` | Adresa: ${orderDetails.street} ${orderDetails.streetNumber}, ${orderDetails.city}, ${orderDetails.county}`;
+        }
+      } catch (error) {
+        console.error('Eroare la căutarea străzii "PRINCIPALĂ":', error);
+        // Folosim o abordare simplificată
+        shipmentData.recipient.address = {
+          countryId,
+          siteId,
+          streetId: 0,
+          streetNo: streetNo, // Folosim numărul real extras din input
+        };
+        shipmentData.content.contents += ` | Adresa: ${orderDetails.street} ${orderDetails.streetNumber}, ${orderDetails.city}, ${orderDetails.county}`;
+      }
+    }
 
     console.log('Datele pentru expedierea DPD:', JSON.stringify(shipmentData, null, 2));
     console.log('Trimitem cererea către DPD...');
@@ -608,6 +686,96 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
       type: error.type,
       raw: error.raw
     });
-    throw error;
+    
+    // Încercăm o ultimă abordare - să creăm expedierea cu datele minime
+    try {
+      console.log('🔄 Încercăm o ultimă abordare pentru crearea expedierii DPD...');
+      
+      const fallbackShipmentData = {
+        sender: {
+          phone1: {
+            number: process.env.COMPANY_PHONE || '',
+          },
+          contactName: process.env.COMPANY_NAME || '',
+          email: process.env.COMPANY_EMAIL || '',
+        },
+        recipient: {
+          phone1: {
+            number: orderDetails.phoneNumber.replace(/\s+/g, ''),
+          },
+          clientName: orderDetails.fullName,
+          email: orderDetails.email,
+          privatePerson: true,
+          address: {
+            countryId: 642, // România
+            siteId: 0, // Vom folosi 0 ca fallback
+            streetId: 0,
+            streetNo: '1',
+          },
+        },
+        service: {
+          serviceId: 2505, // CLASSIC service
+          autoAdjustPickupDate: true,
+        },
+        content: {
+          parcelsCount: 1,
+          totalWeight: 1, // Greutate fixă pentru fallback
+          contents: `Produse ScreenShield | Adresa: ${orderDetails.street} ${orderDetails.streetNumber}, ${orderDetails.city}, ${orderDetails.county}`,
+          package: 'BOX',
+        },
+        payment: {
+          courierServicePayer: 'SENDER' as const,
+        },
+        ref1: order.id,
+        shipmentId: order.id,
+      };
+
+      console.log('Trimitem cererea de fallback către DPD...');
+      const fallbackResponse = await dpdClient.createShipment(fallbackShipmentData);
+      
+      if (fallbackResponse.error) {
+        throw new Error(`DPD Fallback Error: ${fallbackResponse.error.message}`);
+      }
+
+      console.log('✅ Expediere DPD creată cu succes prin fallback:', fallbackResponse.parcels[0].id);
+
+      // Actualizăm comanda cu AWB-ul primit
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          courier: 'DPD',
+          awb: fallbackResponse.parcels[0].id,
+          dpdShipmentId: fallbackResponse.id,
+          orderStatus: 'Comanda a fost preluată de curier (adresa procesată manual)',
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  images: true,
+                  weight: true
+                }
+              }
+            }
+          },
+          details: true,
+          discountCodes: {
+            include: {
+              discountCode: true
+            }
+          }
+        }
+      });
+
+      return updatedOrder;
+    } catch (fallbackError: any) {
+      console.error('❌ Eroare și la abordarea de fallback:', fallbackError);
+      console.log('⚠️ Nu s-a putut crea expedierea DPD. Comanda va continua fără expediere.');
+      return null;
+    }
   }
 } 

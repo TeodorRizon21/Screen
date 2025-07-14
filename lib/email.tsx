@@ -30,10 +30,13 @@ interface OrderDetails {
   email: string;
   phoneNumber: string;
   street: string;
+  streetNumber?: string | null;
   city: string;
   county: string;
   postalCode: string;
   country: string;
+  locationType?: string | null;
+  commune?: string | null;
   notes?: string | null;
   isCompany: boolean;
   companyName?: string | null;
@@ -52,13 +55,13 @@ interface OrderProduct {
 }
 
 interface OrderWithItems {
-  orderNumber: string;
+  orderNumber: string | null;
   id: string;
   userId: string | null;
   total: number;
   paymentStatus: string;
   orderStatus: string;
-  paymentType: string;
+  paymentType: string | null;
   courier: string | null;
   awb: string | null;
   createdAt: Date;
@@ -407,9 +410,10 @@ export async function sendAdminNotification(
                   <div class="info-label">Adresă</div>
                   <div class="info-value">
                     ${completeOrder.details.street}<br>
-                    ${completeOrder.details.city}, ${
-      completeOrder.details.county
-    }<br>
+                    ${completeOrder.details.locationType === 'village' && completeOrder.details.commune 
+                      ? `${completeOrder.details.city}, ${completeOrder.details.commune}, ${completeOrder.details.county}`
+                      : `${completeOrder.details.city}, ${completeOrder.details.county}`
+                    }<br>
                     ${completeOrder.details.postalCode}, ${
       completeOrder.details.country
     }
@@ -565,8 +569,10 @@ export async function sendOrderConfirmation(
                 .join(", ")}</p>
               <p><strong>Suma:</strong> ${order.total.toFixed(2)} RON</p>
               <p><strong>Adresa de livrare:</strong> ${order.details.street}, ${
-      order.details.city
-    }, ${order.details.county}</p>
+      order.details.locationType === 'village' && order.details.commune 
+        ? `${order.details.city}, ${order.details.commune}, ${order.details.county}`
+        : `${order.details.city}, ${order.details.county}`
+    }</p>
             </div>
           </div>
         </body>

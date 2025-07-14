@@ -11,7 +11,7 @@ interface OrderDiscountCodeWithDetails extends OrderDiscountCode {
 }
 
 interface CompleteOrder extends Order {
-  orderNumber: string;
+  orderNumber: string | null;
   items: OrderItemWithProduct[]
   details: OrderDetails
   discountCodes: OrderDiscountCodeWithDetails[]
