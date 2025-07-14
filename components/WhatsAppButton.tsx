@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export default function WhatsAppButton() {
-  const phoneNumber = "+40123456789"; // Înlocuiește cu numărul real
-  const message = "Bună! Am o întrebare despre produsele ScreenShield.";
+  const phoneNumber = "+40758232399"; // Înlocuiește cu numărul real
+  const message = "Am o întrebare despre produsele si serviciile ScreenShield. Ma puteti ajuta?";
 
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 

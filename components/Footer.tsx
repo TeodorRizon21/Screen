@@ -97,12 +97,19 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Phone size={18} className="text-gray-700" />
-                <span className="text-sm text-gray-700">+40 123 456 789</span>
+                <a
+                  href="https://wa.me/40758232399"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-700 hover:text-black transition-colors"
+                >
+                  +40 758 232 399
+                </a>
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={18} className="text-gray-700" />
                 <span className="text-sm text-gray-700">
-                  contact@screenshield.ro
+                contact.screenshield@gmail.com
                 </span>
               </div>
             </div>
