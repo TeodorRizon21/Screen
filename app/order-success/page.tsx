@@ -1,8 +1,17 @@
+'use client';
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
+import { useEffect } from "react";
+import { useCart } from "@/contexts/cart-context";
 
 export default function OrderSuccessPage() {
+  const { dispatch } = useCart();
+  useEffect(() => {
+    dispatch({ type: "CLEAR_CART" });
+  }, [dispatch]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

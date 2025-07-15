@@ -2,42 +2,20 @@ import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 import { stripe } from '@/lib/stripe';
 import { createDPDShipmentForOrder } from '@/lib/dpd';
 import { sendAdminNotification, sendOrderConfirmation } from '@/lib/email';
 import { generateOblioInvoice } from '@/lib/oblio';
 import { generateOrderNumber } from '@/lib/orderNumber';
 
+// Import tipul OrderWithItems din lib/email
+type OrderWithItems = Parameters<typeof sendAdminNotification>[0];
+
 interface OrderItem {
   productId: string;
   quantity: number;
   size: string;
   price: number;
-}
-
-interface OrderDetails {
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  street: string;
-  streetNumber?: string;
-  block?: string | null;
-  floor?: string | null;
-  apartment?: string | null;
-  city: string;
-  county: string;
-  postalCode: string;
-  country: string;
-  locationType?: string | null;
-  commune?: string | null;
-  isCompany: boolean;
-  companyName?: string | null;
-  cui?: string | null;
-  regCom?: string | null;
-  companyStreet?: string | null;
-  companyCity?: string | null;
-  companyCounty?: string | null;
 }
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
@@ -50,9 +28,10 @@ export async function POST(req: Request) {
 
   try {
     event = stripe.webhooks.constructEvent(body, sig, endpointSecret);
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.error('Webhook signature verification failed:', errorMessage);
+    return NextResponse.json({ error: `Webhook Error: ${errorMessage}` }, { status: 400 });
   }
 
   if (event.type === 'checkout.session.completed') {
@@ -121,14 +100,14 @@ export async function POST(req: Request) {
         } else {
           console.log('Nu s-a putut crea expedierea DPD, dar comanda continuă.');
         }
-      } catch (dpdError: any) {
+      } catch (dpdError: unknown) {
         console.error('Eroare la crearea expedierii DPD:', dpdError);
         // Nu aruncăm eroarea mai departe, doar o logăm
         // Comanda a fost creată cu succes, vom încerca să creăm expedierea manual
       }
 
       // Reîncărcăm comanda completă din baza de date pentru a ne asigura că avem toate datele actualizate
-      let completeOrder = await prisma.order.findUnique({
+      const completeOrder = await prisma.order.findUnique({
         where: { id: order.id },
         include: {
           items: {
@@ -220,7 +199,7 @@ export async function POST(req: Request) {
             ...completeOrder,
             orderNumber: completeOrder.orderNumber,
             paymentType: completeOrder.paymentType || 'card'
-          } as any
+          } as OrderWithItems
           // Trimitem notificare către admin
           await sendAdminNotification(orderForEmail);
           // Trimitem confirmare către client

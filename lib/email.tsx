@@ -1,5 +1,4 @@
-import { Order, OrderItem, Product } from "@prisma/client";
-import { format } from "date-fns";
+import { Order, OrderItem } from "@prisma/client";
 import { Resend } from "resend";
 import { prisma } from "@/lib/prisma";
 
@@ -104,61 +103,6 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = {
   email: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
   name: "ScreenShield",
-};
-
-const pdfStyles = {
-  page: {
-    padding: 30,
-    fontSize: 12,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 10,
-  },
-  section: {
-    margin: 10,
-    padding: 10,
-  },
-  row: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    borderBottomStyle: "solid",
-    alignItems: "center",
-    height: 24,
-  },
-  description: {
-    width: "60%",
-  },
-  quantity: {
-    width: "10%",
-  },
-  price: {
-    width: "15%",
-    textAlign: "right",
-  },
-  amount: {
-    width: "15%",
-    textAlign: "right",
-  },
-  totalContainer: {
-    marginTop: 20,
-    textAlign: "right",
-  },
-  total: {
-    fontSize: 16,
-  },
-  bold: {
-    fontWeight: "bold",
-  },
-  sectionTitle: {
-    fontSize: 14,
-    marginBottom: 5,
-    fontWeight: "bold",
-  },
 };
 
 export async function sendEmail(
@@ -558,7 +502,7 @@ export async function sendOrderConfirmation(
               <div class="success-button">COMANDA PLASATA CU SUCCES</div>
             </div>
             <p>Vă mulțumim pentru comanda făcută. Odată ce coletul este predat la curier, vă vom trimite numărul de urmărire al comenzii. Puteți verifica statusul comenzii dumneavoastră prin conectare la contul personal</p>
-            <p>Dacă aveți întrebări referitoare la comanda dumneavoastră, ne puteți trimite email la ........ sau pe whatsapp la numărul ........</p>
+            <p>Dacă aveți întrebări referitoare la comanda dumneavoastră, ne puteți trimite email la contact.screenshield@gmail.com sau pe whatsapp la numărul +40 758 232 399</p>
             <div class="text-center">
               <div class="details-button">DETALII COMANDA</div>
             </div>
