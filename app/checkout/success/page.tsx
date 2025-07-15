@@ -81,6 +81,70 @@ export default async function CheckoutSuccessPage({
         throw new Error("Payment not completed");
       }
 
+      // Verificăm dacă există deja o comandă pentru această sesiune
+      const existingOrder = await tx.order.findFirst({
+        where: {
+          checkoutSessionId: sessionId,
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  images: true,
+                  weight: true,
+                },
+              },
+            },
+          },
+          details: true,
+          discountCodes: {
+            include: {
+              discountCode: true,
+            },
+          },
+        },
+      });
+
+      if (existingOrder) {
+        console.log("Comandă existentă găsită pentru sesiunea:", sessionId);
+        // Verificăm și actualizăm statusul plății dacă este necesar
+        if (existingOrder.paymentStatus !== "COMPLETED") {
+          const updatedOrder = await tx.order.update({
+            where: { id: existingOrder.id },
+            data: {
+              paymentStatus: "COMPLETED",
+            },
+            include: {
+              items: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      price: true,
+                      images: true,
+                      weight: true,
+                    },
+                  },
+                },
+              },
+              details: true,
+              discountCodes: {
+                include: {
+                  discountCode: true,
+                },
+              },
+            },
+          });
+          return updatedOrder as OrderWithItems;
+        }
+        return existingOrder as OrderWithItems;
+      }
+
       const parsedItems = JSON.parse(session.metadata?.items || "[]");
       if (!parsedItems.length) {
         throw new Error("No items found in session");
@@ -129,6 +193,7 @@ export default async function CheckoutSuccessPage({
           total: session.amount_total ? session.amount_total / 100 : 0,
           orderStatus: "Confirmată",
           paymentType: "card",
+          paymentStatus: "COMPLETED",
           orderNumber: await generateOrderNumber(),
           checkoutSessionId: sessionId,
         },
@@ -165,23 +230,31 @@ export default async function CheckoutSuccessPage({
     // creăm imediat expedierea DPD pentru că știm că plata este confirmată
     if (order) {
       try {
-        console.log(
-          "Creăm expedierea DPD pentru comanda cu plată card:",
-          order.id
-        );
-        const orderWithDPD = await createDPDShipmentForOrder(
-          order,
-          order.details
-        );
-        if (orderWithDPD) {
-          order = orderWithDPD;
+        // Verificăm dacă comanda are deja o expediere DPD
+        if (!order.dpdShipmentId && !order.awb) {
           console.log(
-            "✅ Expediere DPD creată cu succes pentru comanda cu card:",
-            orderWithDPD.id
+            "Creăm expedierea DPD pentru comanda cu plată card:",
+            order.id
           );
+          const orderWithDPD = await createDPDShipmentForOrder(
+            order,
+            order.details
+          );
+          if (orderWithDPD) {
+            order = orderWithDPD;
+            console.log(
+              "✅ Expediere DPD creată cu succes pentru comanda cu card:",
+              orderWithDPD.id
+            );
+          } else {
+            console.log(
+              "⚠️ Nu s-a putut crea expedierea DPD pentru comanda cu card, dar comanda continuă."
+            );
+          }
         } else {
           console.log(
-            "⚠️ Nu s-a putut crea expedierea DPD pentru comanda cu card, dar comanda continuă."
+            "ℹ️ Comanda are deja o expediere DPD creată, se sare peste crearea unei noi expedieri.",
+            { dpdShipmentId: order.dpdShipmentId, awb: order.awb }
           );
         }
       } catch (dpdError: any) {
@@ -333,20 +406,31 @@ export default async function CheckoutSuccessPage({
     // După ce comanda a fost actualizată cu succes, creăm expedierea DPD
     if (order) {
       try {
-        console.log("Creăm expedierea DPD pentru comanda ramburs:", order?.id);
-        const orderWithDPD = await createDPDShipmentForOrder(
-          order!,
-          order!.details
-        );
-        if (orderWithDPD) {
-          order = orderWithDPD;
+        // Verificăm dacă comanda are deja o expediere DPD
+        if (!order.dpdShipmentId && !order.awb) {
           console.log(
-            "✅ Expediere DPD creată cu succes pentru comanda ramburs:",
-            orderWithDPD.id
+            "Creăm expedierea DPD pentru comanda ramburs:",
+            order?.id
           );
+          const orderWithDPD = await createDPDShipmentForOrder(
+            order!,
+            order!.details
+          );
+          if (orderWithDPD) {
+            order = orderWithDPD;
+            console.log(
+              "✅ Expediere DPD creată cu succes pentru comanda ramburs:",
+              orderWithDPD.id
+            );
+          } else {
+            console.log(
+              "⚠️ Nu s-a putut crea expedierea DPD pentru comanda ramburs, dar comanda continuă."
+            );
+          }
         } else {
           console.log(
-            "⚠️ Nu s-a putut crea expedierea DPD pentru comanda ramburs, dar comanda continuă."
+            "ℹ️ Comanda are deja o expediere DPD creată, se sare peste crearea unei noi expedieri.",
+            { dpdShipmentId: order.dpdShipmentId, awb: order.awb }
           );
         }
       } catch (dpdError: any) {
