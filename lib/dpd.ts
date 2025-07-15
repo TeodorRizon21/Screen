@@ -540,6 +540,16 @@ export async function createDPDShipmentForOrder(order: any, orderDetails: any) {
       shipmentId: order.id,
     };
 
+    // Adăugăm serviciul de ramburs dacă metoda de plată este ramburs
+    if (order.paymentType === 'ramburs') {
+      shipmentData.service.additionalServices = {
+        cod: {
+          amount: order.total,
+          processingType: 'CASH' as const,
+        },
+      };
+    }
+
     // Adăugăm adresa doar dacă avem streetId valid
     if (streetId) {
       shipmentData.recipient.address = {

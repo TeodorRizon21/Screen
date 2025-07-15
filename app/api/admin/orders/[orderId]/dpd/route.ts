@@ -96,12 +96,12 @@ export async function POST(
       },
       service: {
         serviceId: 2505, // CLASSIC service
-        additionalServices: {
+        additionalServices: order.paymentType === 'ramburs' ? {
           cod: {
             amount: order.total,
             processingType: 'CASH' as const,
           },
-        },
+        } : undefined,
         autoAdjustPickupDate: true,
       },
       content: {
