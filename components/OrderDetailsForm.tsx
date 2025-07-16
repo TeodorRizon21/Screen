@@ -44,11 +44,13 @@ const formSchema = z
 
     // Informatii livrare
     street: z.string().min(2, "Strada trebuie sa aiba cel putin 2 caractere"),
-    streetNumber: z.string().optional(),
+    streetNumber: z.string().min(1, "Numărul străzii este obligatoriu"),
     block: z.string().optional(),
     floor: z.string().optional(),
     apartment: z.string().optional(),
-    city: z.string().min(2, "Orașul/Satul trebuie sa aiba cel putin 2 caractere"),
+    city: z
+      .string()
+      .min(2, "Orașul/Satul trebuie sa aiba cel putin 2 caractere"),
     county: z.string().min(2, "Judetul trebuie sa aiba cel putin 2 caractere"),
     postalCode: z
       .string()
@@ -74,11 +76,9 @@ const formSchema = z
     companyCounty: z.string().optional(),
 
     subscribeToNewsletter: z.boolean().optional(),
-    termsAccepted: z
-      .boolean()
-      .refine((val) => val === true, {
-        message: "Trebuie sa accepti termenii si conditiile pentru a continua",
-      }),
+    termsAccepted: z.boolean().refine((val) => val === true, {
+      message: "Trebuie sa accepti termenii si conditiile pentru a continua",
+    }),
   })
   .refine(
     (data) => {
@@ -143,7 +143,7 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
       email: "",
       phoneNumber: "",
       street: "",
-      streetNumber: undefined,
+      streetNumber: "",
       block: "",
       floor: "",
       apartment: "",
@@ -232,9 +232,9 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
       // Handle newsletter subscription
       if (values.subscribeToNewsletter) {
         try {
-          await fetch('/api/newsletter', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+          await fetch("/api/newsletter", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: values.email }),
           });
           // Nu blocam procesul de checkout daca abonarea esueaza, doar inregistram in consola
@@ -578,7 +578,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     <FormItem>
                       <FormLabel>Strada*</FormLabel>
                       <FormControl>
-                        <Input {...field} className="bg-white" placeholder="ex: Astrelor" />
+                        <Input
+                          {...field}
+                          className="bg-white"
+                          placeholder="ex: Astrelor"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -589,9 +593,13 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                   name="streetNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Numărul străzii (opțional)</FormLabel>
+                      <FormLabel>Numărul străzii*</FormLabel>
                       <FormControl>
-                        <Input {...field} className="bg-white" placeholder="ex: 57" />
+                        <Input
+                          {...field}
+                          className="bg-white"
+                          placeholder="ex: 57"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -606,7 +614,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     <FormItem>
                       <FormLabel>Bloc (opțional)</FormLabel>
                       <FormControl>
-                        <Input {...field} className="bg-white" placeholder="ex: A" />
+                        <Input
+                          {...field}
+                          className="bg-white"
+                          placeholder="ex: A"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -619,7 +631,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     <FormItem>
                       <FormLabel>Etaj (opțional)</FormLabel>
                       <FormControl>
-                        <Input {...field} className="bg-white" placeholder="ex: 3" />
+                        <Input
+                          {...field}
+                          className="bg-white"
+                          placeholder="ex: 3"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -632,7 +648,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     <FormItem>
                       <FormLabel>Apartament (opțional)</FormLabel>
                       <FormControl>
-                        <Input {...field} className="bg-white" placeholder="ex: 15" />
+                        <Input
+                          {...field}
+                          className="bg-white"
+                          placeholder="ex: 15"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -662,7 +682,9 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                               <FormControl>
                                 <RadioGroupItem value="city" />
                               </FormControl>
-                              <FormLabel className="font-normal">Oraș</FormLabel>
+                              <FormLabel className="font-normal">
+                                Oraș
+                              </FormLabel>
                             </FormItem>
                             <FormItem className="flex items-center space-x-2 space-y-0">
                               <FormControl>
@@ -677,36 +699,38 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     )}
                   />
                 </div>
-                
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>{locationType === "city" ? "Oraș*" : "Sat*"}</FormLabel>
-                      <FormControl>
-                        <Input {...field} className="bg-white" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="county"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Județ*</FormLabel>
-                      <FormControl>
-                        <Input {...field} className="bg-white" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {locationType === "city" ? "Oraș*" : "Sat*"}
+                        </FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="county"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Județ*</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="bg-white" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                
+
                 {locationType === "village" && (
                   <FormField
                     control={form.control}
@@ -715,7 +739,11 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                       <FormItem>
                         <FormLabel>Comună*</FormLabel>
                         <FormControl>
-                          <Input {...field} className="bg-white" placeholder="ex: Comuna X" />
+                          <Input
+                            {...field}
+                            className="bg-white"
+                            placeholder="ex: Comuna X"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -879,7 +907,8 @@ export default function OrderDetailsForm({ userId }: { userId?: string }) {
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>
-                        Doresc să mă abonez la newsletter pentru a primi oferte și noutăți.
+                        Doresc să mă abonez la newsletter pentru a primi oferte
+                        și noutăți.
                       </FormLabel>
                     </div>
                   </FormItem>
