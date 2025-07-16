@@ -213,22 +213,25 @@ export default function AdminCars() {
           Administrare Mașini
         </h2>
 
-        <div className="flex space-x-4 mb-8">
+        <div className="flex flex-col sm:flex-row gap-2 sm:space-x-4 mb-8">
           <Button
             variant={activeTab === "make" ? "default" : "outline"}
             onClick={() => setActiveTab("make")}
+            className="w-full sm:w-auto"
           >
             Adaugă Marcă
           </Button>
           <Button
             variant={activeTab === "model" ? "default" : "outline"}
             onClick={() => setActiveTab("model")}
+            className="w-full sm:w-auto"
           >
             Adaugă Model
           </Button>
           <Button
             variant={activeTab === "generation" ? "default" : "outline"}
             onClick={() => setActiveTab("generation")}
+            className="w-full sm:w-auto"
           >
             Adaugă Generație
           </Button>

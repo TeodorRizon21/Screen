@@ -69,7 +69,8 @@ export default function DPDTrackingDialog({ awb }: DPDTrackingDialogProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date().toLocaleString("ro-RO", {
+    const date = new Date(dateString);
+    return date.toLocaleString("ro-RO", {
       dateStyle: "medium",
       timeStyle: "short",
     });
@@ -122,12 +123,12 @@ export default function DPDTrackingDialog({ awb }: DPDTrackingDialogProps) {
                     <div className="text-sm text-gray-600">
                       {op.description}
                     </div>
-                    <div className="text-sm text-gray-500">
-                      Ultimul status la data de {formatDate("")}
-                    </div>
                   </div>
                 </div>
               ))}
+              <div className="text-sm text-gray-500 text-center">
+                Ultimul status la data de {formatDate(operations[0].date)}
+              </div>
               <div className="flex justify-center mt-6">
                 <a
                   href={getDPDTrackingUrl()}

@@ -113,16 +113,30 @@ function OrderCard({
   return (
     <Card className="mb-4">
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle>Comanda {order.orderNumber}</CardTitle>
-          <div className="flex gap-2">
-            {order.courier === "DPD" && order.awb && (
-              <DPDTrackingDialog awb={order.awb} />
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            {order.awb && (
+              <>
+                {order.courier === "DPD" ? (
+                  <DPDTrackingDialog awb={order.awb} />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                    disabled
+                  >
+                    AWB: {order.awb}
+                  </Button>
+                )}
+              </>
             )}
             <Button
               variant="outline"
               size="sm"
               onClick={() => onDownloadInvoice(order.id)}
+              className="flex-1 sm:flex-none"
             >
               <Download className="h-4 w-4" />
             </Button>
@@ -130,6 +144,7 @@ function OrderCard({
               variant="outline"
               size="sm"
               onClick={() => onFulfill(order.id)}
+              className="flex-1 sm:flex-none"
             >
               Finalizează
             </Button>
@@ -137,6 +152,7 @@ function OrderCard({
               variant="outline"
               size="sm"
               onClick={() => setShowCancelDialog(true)}
+              className="flex-1 sm:flex-none"
             >
               Anulează
             </Button>
@@ -144,6 +160,7 @@ function OrderCard({
               variant="outline"
               size="sm"
               onClick={() => setShowRefundDialog(true)}
+              className="flex-1 sm:flex-none"
             >
               Rambursare
             </Button>
@@ -151,6 +168,7 @@ function OrderCard({
               variant="destructive"
               size="sm"
               onClick={() => setShowDeleteDialog(true)}
+              className="flex-1 sm:flex-none"
             >
               Șterge
             </Button>
@@ -213,14 +231,16 @@ function OrderCard({
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Adresă:</span>{" "}
-                      {order.details.street} {order.details.streetNumber || ''}
+                      {order.details.street} {order.details.streetNumber || ""}
                       {order.details.block && `, Bloc ${order.details.block}`}
                       {order.details.floor && `, Etaj ${order.details.floor}`}
-                      {order.details.apartment && `, Ap ${order.details.apartment}`}
-                      , {order.details.locationType === 'village' && order.details.commune 
+                      {order.details.apartment &&
+                        `, Ap ${order.details.apartment}`}
+                      ,{" "}
+                      {order.details.locationType === "village" &&
+                      order.details.commune
                         ? `${order.details.city}, ${order.details.commune}, ${order.details.county}`
-                        : `${order.details.city}, ${order.details.county}`
-                      }
+                        : `${order.details.city}, ${order.details.county}`}
                     </p>
                     <p className="text-sm">
                       <span className="font-medium">Cod Poștal:</span>{" "}
@@ -445,21 +465,26 @@ export default function AdminOrderList() {
     // Funcție helper pentru a verifica luna comenzii
     const matchesMonthFilter = (order: Order) => {
       if (monthFilter === "toate") return true;
-      
+
       const orderDate = new Date(order.createdAt);
       const currentDate = new Date();
       const currentYear = currentDate.getFullYear();
       const currentMonth = currentDate.getMonth();
-      
+
       switch (monthFilter) {
         case "luna_curenta":
-          return orderDate.getFullYear() === currentYear && 
-                 orderDate.getMonth() === currentMonth;
+          return (
+            orderDate.getFullYear() === currentYear &&
+            orderDate.getMonth() === currentMonth
+          );
         case "luna_trecuta":
           const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-          return orderDate.getFullYear() === lastMonthYear && 
-                 orderDate.getMonth() === lastMonth;
+          const lastMonthYear =
+            currentMonth === 0 ? currentYear - 1 : currentYear;
+          return (
+            orderDate.getFullYear() === lastMonthYear &&
+            orderDate.getMonth() === lastMonth
+          );
         case "ultimele_3_luni":
           const threeMonthsAgo = new Date(currentDate);
           threeMonthsAgo.setMonth(currentMonth - 3);
@@ -479,30 +504,36 @@ export default function AdminOrderList() {
 
     // Aplicăm filtrele în funcție de selecție
     const matchesOrderFilter = (() => {
-    switch (orderFilter) {
-      case "nefinalizate":
-        return (
-          order.orderStatus !== "Comanda finalizata!" &&
-          order.orderStatus !== "Comanda anulata" &&
-          order.orderStatus !== "Comandă anulată" &&
-          order.orderStatus !== "Comanda rambursata" &&
-          order.orderStatus !== "Comandă rambursată"
-        );
-      case "card":
+      switch (orderFilter) {
+        case "nefinalizate":
+          return (
+            order.orderStatus !== "Comanda finalizata!" &&
+            order.orderStatus !== "Comanda anulata" &&
+            order.orderStatus !== "Comandă anulată" &&
+            order.orderStatus !== "Comanda rambursata" &&
+            order.orderStatus !== "Comandă rambursată"
+          );
+        case "card":
           return order.paymentType === "card";
-      case "ramburs":
+        case "ramburs":
           return order.paymentType === "ramburs";
-      case "completate":
-          return isOrderStatus(order, ["Comanda finalizata!", "Comanda finalizată!"]);
-      case "anulate":
+        case "completate":
+          return isOrderStatus(order, [
+            "Comanda finalizata!",
+            "Comanda finalizată!",
+          ]);
+        case "anulate":
           return isOrderStatus(order, ["Comanda anulata", "Comandă anulată"]);
-      case "rambursate":
-          return isOrderStatus(order, ["Comanda rambursata", "Comandă rambursată"]);
-      case "toate":
+        case "rambursate":
+          return isOrderStatus(order, [
+            "Comanda rambursata",
+            "Comandă rambursată",
+          ]);
+        case "toate":
           return true;
-      default:
+        default:
           return true;
-    }
+      }
     })();
 
     return matchesSearch && matchesOrderFilter && matchesMonthFilter(order);
@@ -763,17 +794,18 @@ export default function AdminOrderList() {
     try {
       console.log("=== ÎNCEPERE DESCĂRCARE FACTURĂ ===");
       console.log("Order ID:", orderId);
-      
+
       // Verificăm dacă există factură
-      const order = orders.find(o => o.id === orderId);
+      const order = orders.find((o) => o.id === orderId);
       console.log("Order găsit:", order);
       console.log("OblioInvoiceId:", order?.oblioInvoiceId);
-      
+
       if (!order?.oblioInvoiceId) {
         console.log("Nu există factură pentru această comandă");
         toast({
           title: "Eroare",
-          description: "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
+          description:
+            "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
           variant: "destructive",
         });
         return;
@@ -800,7 +832,7 @@ export default function AdminOrderList() {
       // Descărcăm PDF-ul
       const blob = await response.blob();
       console.log("Blob descărcat:", blob.size, "bytes");
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -809,7 +841,7 @@ export default function AdminOrderList() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       console.log("Factura descărcată cu succes!");
       console.log("=== FINALIZARE DESCĂRCARE FACTURĂ ===");
     } catch (error) {
@@ -896,8 +928,6 @@ export default function AdminOrderList() {
       });
     }
   };
-
-
 
   return (
     <div className="space-y-6">

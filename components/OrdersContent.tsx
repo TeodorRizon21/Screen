@@ -177,11 +177,12 @@ export default function OrdersContent({ userId }: { userId: string }) {
   ) => {
     try {
       // Verificăm dacă există factură
-      const order = orders.find(o => o.id === orderId);
+      const order = orders.find((o) => o.id === orderId);
       if (!order?.invoiceUrl) {
         toast({
           title: "Eroare",
-          description: "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
+          description:
+            "Nu există factură pentru această comandă. Vă rugăm să contactați suportul.",
           variant: "destructive",
         });
         return;
@@ -262,26 +263,26 @@ export default function OrdersContent({ userId }: { userId: string }) {
       <div className="container mx-auto px-6 py-12 text-center">
         <div className="text-left space-y-2 mb-12 font-poppins relative pb-6">
           <p className="text-sm uppercase tracking-wider text-black font-medium">
-            YOUR SHOPPING HISTORY
+            ISTORICUL COMENZILOR TALE
           </p>
-          <h2 className="text-3xl md:text-4xl font-bold">My Orders</h2>
+          <h2 className="text-3xl md:text-4xl font-bold">Comenzile Mele</h2>
           <div className="absolute -bottom-[0.2rem] left-0 w-40 h-1 bg-[#FFD66C]"></div>
         </div>
-        <p className="mb-8">You have no placed orders.</p>
+        <p className="mb-8">Nu ai nicio comandă plasată.</p>
         <Link href="/">
-          <Button>Shop Now</Button>
+          <Button>Cumpără Acum</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-6 py-12">
+    <div className="container mx-auto px-6 pb-6 md:py-12">
       <div className="text-left space-y-2 mb-12 font-poppins relative pb-6">
         <p className="text-sm uppercase tracking-wider text-black font-medium">
-          YOUR SHOPPING HISTORY
+          ISTORICUL COMENZILOR TALE
         </p>
-        <h2 className="text-3xl md:text-4xl font-bold">My Orders</h2>
+        <h2 className="text-3xl md:text-4xl font-bold">Comenzile Mele</h2>
         <div className="absolute -bottom-[0.2rem] left-0 w-40 h-1 bg-[#FFD66C]"></div>
       </div>
       <div className="space-y-8">
@@ -397,10 +398,10 @@ export default function OrdersContent({ userId }: { userId: string }) {
                             `, Ap ${order.details.apartment}`}
                         </p>
                         <p className="text-sm">
-                          {order.details.locationType === 'village' && order.details.commune 
+                          {order.details.locationType === "village" &&
+                          order.details.commune
                             ? `${order.details.city}, ${order.details.commune}, ${order.details.county} ${order.details.postalCode}`
-                            : `${order.details.city}, ${order.details.county} ${order.details.postalCode}`
-                          }
+                            : `${order.details.city}, ${order.details.county} ${order.details.postalCode}`}
                         </p>
                         <p className="text-sm">{order.details.country}</p>
                         {order.details.notes && (
