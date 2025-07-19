@@ -4,7 +4,7 @@ import { isAdmin } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Verificăm dacă utilizatorul este admin
     const admin = await isAdmin();
@@ -15,13 +15,38 @@ export async function GET() {
       );
     }
 
-    const subscribers = await prisma.newsletterSubscriber.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '5');
+    const search = searchParams.get('search') || '';
+    const skip = (page - 1) * limit;
 
-    return NextResponse.json(subscribers);
+    const where = search ? {
+      email: {
+        contains: search,
+        mode: 'insensitive' as const,
+      }
+    } : {};
+
+    const [subscribers, total] = await Promise.all([
+      prisma.newsletterSubscriber.findMany({
+        where,
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.newsletterSubscriber.count({
+        where,
+      }),
+    ]);
+
+    return NextResponse.json({
+      subscribers,
+      total,
+      hasMore: skip + subscribers.length < total
+    });
   } catch (error) {
     console.error("Error fetching newsletter subscribers:", error);
     return NextResponse.json(

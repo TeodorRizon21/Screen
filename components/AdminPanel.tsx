@@ -117,7 +117,7 @@ export default function AdminPanel({ product }: AdminPanelProps) {
       const makeCollection = Object.entries(COLLECTIONS).find(
         ([_, value]) => value === selectedMake
       )?.[0] as Collection | undefined;
-      
+
       if (makeCollection) {
         newCollections.push(makeCollection);
       }
@@ -536,7 +536,7 @@ export default function AdminPanel({ product }: AdminPanelProps) {
                   }
                 />
                 <Label htmlFor="allowOutOfStock" className="text-gray-700">
-                  Allow sales when out of stock
+                  Stock nelimitat
                 </Label>
               </div>
 
@@ -549,7 +549,7 @@ export default function AdminPanel({ product }: AdminPanelProps) {
                   }
                 />
                 <Label htmlFor="showStockLevel" className="text-gray-700">
-                  Show stock level to customers
+                  Clienti vad stock-ul produsului
                 </Label>
               </div>
             </div>

@@ -17,9 +17,28 @@ interface CompleteOrder extends Order {
   discountCodes: OrderDiscountCodeWithDetails[]
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const year = searchParams.get('year');
+    const month = searchParams.get('month');
+
+    let dateFilter = {};
+    
+    if (year && month) {
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const endDate = new Date(parseInt(year), parseInt(month), 0); // Ultima zi a lunii
+      
+      dateFilter = {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+    }
+
     const orders = await prisma.order.findMany({
+      where: dateFilter,
       include: {
         items: {
           include: {

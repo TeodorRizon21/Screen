@@ -397,327 +397,83 @@ function ProductCard({ item }: { item: OrderItem }) {
   );
 }
 
+type BulkAction = "delete" | "cancel" | "fulfill" | "refund" | null;
+
 export default function AdminOrderList() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [orderFilter, setOrderFilter] = useState("nefinalizate");
-  const [monthFilter, setMonthFilter] = useState<string>("toate");
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<BulkAction>(null);
+  const [timeFilter, setTimeFilter] = useState<string>("all");
+  const [useYearMonthFilter, setUseYearMonthFilter] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [showBulkActionDialog, setShowBulkActionDialog] = useState(false);
-  const [bulkAction, setBulkAction] = useState<
-    "delete" | "cancel" | "fulfill" | "refund" | null
-  >(null);
+  const [orderFilter, setOrderFilter] = useState("nefinalizate");
+  const [monthFilter, setMonthFilter] = useState("toate");
 
-  const filteredOrders = orders.filter((order) => {
-    const searchTermLower = searchTerm.toLowerCase().trim();
-
-    // Verificăm toate câmpurile relevante
-    const matchesSearch =
-      // Număr comandă și AWB
-      order.orderNumber.toLowerCase().includes(searchTermLower) ||
-      order.awb?.toLowerCase().includes(searchTermLower) ||
-      false ||
-      // Informații client
-      order.details.fullName.toLowerCase().includes(searchTermLower) ||
-      order.details.email.toLowerCase().includes(searchTermLower) ||
-      order.details.phoneNumber.includes(searchTerm) ||
-      order.details.street.toLowerCase().includes(searchTermLower) ||
-      order.details.streetNumber?.toLowerCase().includes(searchTermLower) ||
-      order.details.block?.toLowerCase().includes(searchTermLower) ||
-      order.details.floor?.toLowerCase().includes(searchTermLower) ||
-      order.details.apartment?.toLowerCase().includes(searchTermLower) ||
-      order.details.city.toLowerCase().includes(searchTermLower) ||
-      order.details.county.toLowerCase().includes(searchTermLower) ||
-      order.details.postalCode.includes(searchTerm) ||
-      order.details.notes?.toLowerCase().includes(searchTermLower) ||
-      false ||
-      // Status și tip plată
-      order.paymentStatus.toLowerCase().includes(searchTermLower) ||
-      order.orderStatus.toLowerCase().includes(searchTermLower) ||
-      order.paymentType.toLowerCase().includes(searchTermLower) ||
-      // Produse
-      order.items.some(
-        (item) =>
-          item.productName.toLowerCase().includes(searchTermLower) ||
-          item.size.toLowerCase().includes(searchTermLower)
-      ) ||
-      // Coduri de reducere
-      order.discountCodes.some((discount) =>
-        discount.code.toLowerCase().includes(searchTermLower)
-      );
-
-    // Funcție helper pentru a verifica statusul comenzii
-    const isOrderStatus = (order: Order, statuses: string[]) => {
-      const normalizedOrderStatus = order.orderStatus
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-      return statuses.some(
-        (status) =>
-          status
-            .toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "") === normalizedOrderStatus
-      );
-    };
-
-    // Funcție helper pentru a verifica luna comenzii
-    const matchesMonthFilter = (order: Order) => {
-      if (monthFilter === "toate") return true;
-
-      const orderDate = new Date(order.createdAt);
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear();
-      const currentMonth = currentDate.getMonth();
-
-      switch (monthFilter) {
-        case "luna_curenta":
-          return (
-            orderDate.getFullYear() === currentYear &&
-            orderDate.getMonth() === currentMonth
-          );
-        case "luna_trecuta":
-          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-          const lastMonthYear =
-            currentMonth === 0 ? currentYear - 1 : currentYear;
-          return (
-            orderDate.getFullYear() === lastMonthYear &&
-            orderDate.getMonth() === lastMonth
-          );
-        case "ultimele_3_luni":
-          const threeMonthsAgo = new Date(currentDate);
-          threeMonthsAgo.setMonth(currentMonth - 3);
-          return orderDate >= threeMonthsAgo;
-        case "ultimele_6_luni":
-          const sixMonthsAgo = new Date(currentDate);
-          sixMonthsAgo.setMonth(currentMonth - 6);
-          return orderDate >= sixMonthsAgo;
-        case "anul_curent":
-          return orderDate.getFullYear() === currentYear;
-        case "anul_trecut":
-          return orderDate.getFullYear() === currentYear - 1;
-        default:
-          return true;
-      }
-    };
-
-    // Aplicăm filtrele în funcție de selecție
-    const matchesOrderFilter = (() => {
-      switch (orderFilter) {
-        case "nefinalizate":
-          return (
-            order.orderStatus !== "Comanda finalizata!" &&
-            order.orderStatus !== "Comanda anulata" &&
-            order.orderStatus !== "Comandă anulată" &&
-            order.orderStatus !== "Comanda rambursata" &&
-            order.orderStatus !== "Comandă rambursată"
-          );
-        case "card":
-          return order.paymentType === "card";
-        case "ramburs":
-          return order.paymentType === "ramburs";
-        case "completate":
-          return isOrderStatus(order, [
-            "Comanda finalizata!",
-            "Comanda finalizată!",
-          ]);
-        case "anulate":
-          return isOrderStatus(order, ["Comanda anulata", "Comandă anulată"]);
-        case "rambursate":
-          return isOrderStatus(order, [
-            "Comanda rambursata",
-            "Comandă rambursată",
-          ]);
-        case "toate":
-          return true;
-        default:
-          return true;
-      }
-    })();
-
-    return matchesSearch && matchesOrderFilter && matchesMonthFilter(order);
-  });
-
-  // Calculăm statisticile pentru comenzile filtrate
-  const stats = {
-    totalOrders: filteredOrders.length,
-    totalRevenue: filteredOrders.reduce((sum, order) => sum + order.total, 0),
-    totalProducts: filteredOrders.reduce(
-      (sum, order) =>
-        sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-      0
-    ),
-    averageOrderValue:
-      filteredOrders.length > 0
-        ? filteredOrders.reduce((sum, order) => sum + order.total, 0) /
-          filteredOrders.length
-        : 0,
-  };
-
-  // Funcție pentru a obține titlul statisticilor bazat pe filtrul curent
-  const getStatsTitle = () => {
-    let baseTitle = "";
-    switch (orderFilter) {
-      case "nefinalizate":
-        baseTitle = "Comenzi Nefinalizate";
-        break;
-      case "card":
-        baseTitle = "Comenzi cu Plata Card";
-        break;
-      case "ramburs":
-        baseTitle = "Comenzi cu Plata Ramburs";
-        break;
-      case "completate":
-        baseTitle = "Comenzi Completate";
-        break;
-      case "anulate":
-        baseTitle = "Comenzi Anulate";
-        break;
-      case "rambursate":
-        baseTitle = "Comenzi Rambursate";
-        break;
-      case "toate":
-        baseTitle = "Toate Comenzile";
-        break;
-      default:
-        baseTitle = "Toate Comenzile";
-    }
-
-    // Adăugăm informația despre perioada selectată
-    let periodInfo = "";
-    switch (monthFilter) {
-      case "luna_curenta":
-        periodInfo = " (Luna curentă)";
-        break;
-      case "luna_trecuta":
-        periodInfo = " (Luna trecută)";
-        break;
-      case "ultimele_3_luni":
-        periodInfo = " (Ultimele 3 luni)";
-        break;
-      case "ultimele_6_luni":
-        periodInfo = " (Ultimele 6 luni)";
-        break;
-      case "anul_curent":
-        periodInfo = " (Anul curent)";
-        break;
-      case "anul_trecut":
-        periodInfo = " (Anul trecut)";
-        break;
-      default:
-        periodInfo = "";
-    }
-
-    return baseTitle + periodInfo;
-  };
-
-  // Funcție pentru a selecta/deselecta toate comenzile filtrate
-  const toggleSelectAll = () => {
-    if (selectedOrders.length === filteredOrders.length) {
-      setSelectedOrders([]);
-    } else {
-      setSelectedOrders(filteredOrders.map((order) => order.id));
-    }
-  };
-
-  // Funcție pentru a gestiona selecția individuală
-  const toggleOrderSelection = (orderId: string) => {
-    setSelectedOrders((prev) =>
-      prev.includes(orderId)
-        ? prev.filter((id) => id !== orderId)
-        : [...prev, orderId]
-    );
-  };
-
-  // Funcție pentru a executa acțiunea în bulk
-  const executeBulkAction = async () => {
-    if (!bulkAction || selectedOrders.length === 0) return;
-
-    try {
-      const actionMap = {
-        delete: handleDeleteOrder,
-        cancel: handleCancelOrder,
-        fulfill: handleFulfillOrder,
-        refund: handleRefundOrder,
-      };
-
-      const action = actionMap[bulkAction];
-
-      // Executăm acțiunea pentru fiecare comandă selectată
-      await Promise.all(selectedOrders.map((orderId) => action(orderId)));
-
-      // Resetăm selecția și închidem dialogul
-      setSelectedOrders([]);
-      setShowBulkActionDialog(false);
-      setBulkAction(null);
-
-      // Reîmprospătăm lista de comenzi
-      await fetchOrders();
-
-      toast({
-        title: "Succes!",
-        description: `Acțiunea a fost executată cu succes pentru ${selectedOrders.length} comenzi.`,
-      });
-    } catch (error) {
-      console.error("Error executing bulk action:", error);
-      toast({
-        title: "Eroare",
-        description: "A apărut o eroare la executarea acțiunii în bulk.",
-        variant: "destructive",
-      });
-    }
-  };
+  const years = Array.from(
+    { length: 5 },
+    (_, i) => new Date().getFullYear() - i
+  );
+  const months = [
+    { value: "1", label: "Ianuarie" },
+    { value: "2", label: "Februarie" },
+    { value: "3", label: "Martie" },
+    { value: "4", label: "Aprilie" },
+    { value: "5", label: "Mai" },
+    { value: "6", label: "Iunie" },
+    { value: "7", label: "Iulie" },
+    { value: "8", label: "August" },
+    { value: "9", label: "Septembrie" },
+    { value: "10", label: "Octombrie" },
+    { value: "11", label: "Noiembrie" },
+    { value: "12", label: "Decembrie" },
+  ];
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [timeFilter, useYearMonthFilter, selectedYear, selectedMonth]);
 
   const fetchOrders = async () => {
-    setLoading(true);
     try {
-      const response = await fetch("/api/admin/orders");
-      if (!response.ok) {
-        throw new Error("Failed to fetch orders");
+      setIsLoading(true);
+      let url = "/api/admin/orders";
+
+      if (useYearMonthFilter && selectedYear && selectedMonth) {
+        url += `?year=${selectedYear}&month=${selectedMonth}`;
       }
-      const data = await response.json();
 
-      // Fetch DPD status for each order with DPD courier and AWB
-      const ordersWithDPDStatus = await Promise.all(
-        data.map(async (order: Order) => {
-          if (order.courier === "DPD" && order.awb) {
-            try {
-              const response = await fetch("/api/admin/dpd/track", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  parcelIds: [order.awb],
-                }),
-              });
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch orders");
+      let data = await response.json();
 
-              if (!response.ok) {
-                throw new Error("Failed to fetch tracking info");
-              }
+      // Aplicăm filtrul de timp doar dacă nu folosim filtrul an/lună
+      if (!useYearMonthFilter && timeFilter !== "all") {
+        const now = new Date();
+        const filterDate = new Date();
 
-              const trackingData = await response.json();
-              if (trackingData.parcels?.[0]?.operations?.length > 0) {
-                const operations = trackingData.parcels[0].operations;
-                return {
-                  ...order,
-                  dpdStatus: operations[operations.length - 1].description,
-                };
-              }
-            } catch (error) {
-              console.error("Error fetching DPD status:", error);
-            }
-          }
-          return order;
-        })
-      );
+        switch (timeFilter) {
+          case "today":
+            filterDate.setHours(0, 0, 0, 0);
+            break;
+          case "week":
+            filterDate.setDate(now.getDate() - 7);
+            break;
+          case "month":
+            filterDate.setMonth(now.getMonth() - 1);
+            break;
+        }
 
-      setOrders(ordersWithDPDStatus);
+        data = data.filter((order: Order) => {
+          const orderDate = new Date(order.createdAt);
+          return orderDate >= filterDate;
+        });
+      }
+
+      setOrders(data);
+      setFilteredOrders(data);
     } catch (error) {
       console.error("Error fetching orders:", error);
       toast({
@@ -726,7 +482,7 @@ export default function AdminOrderList() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -929,20 +685,256 @@ export default function AdminOrderList() {
     }
   };
 
+  const executeBulkAction = async () => {
+    if (!bulkAction || selectedOrders.length === 0) return;
+
+    try {
+      const actionMap = {
+        delete: handleDeleteOrder,
+        cancel: handleCancelOrder,
+        fulfill: handleFulfillOrder,
+        refund: handleRefundOrder,
+      };
+
+      const action = actionMap[bulkAction];
+
+      // Executăm acțiunea pentru fiecare comandă selectată
+      await Promise.all(selectedOrders.map((orderId) => action(orderId)));
+
+      // Resetăm selecția și închidem dialogul
+      setSelectedOrders([]);
+      setShowBulkActionDialog(false);
+      setBulkAction(null);
+
+      // Reîmprospătăm lista de comenzi
+      await fetchOrders();
+
+      toast({
+        title: "Succes!",
+        description: `Acțiunea a fost executată cu succes pentru ${selectedOrders.length} comenzi.`,
+      });
+    } catch (error) {
+      console.error("Error executing bulk action:", error);
+      toast({
+        title: "Eroare",
+        description: "A apărut o eroare la executarea acțiunii în bulk.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkActionChange = (value: string) => {
+    setBulkAction(value as BulkAction);
+    setShowBulkActionDialog(true);
+  };
+
+  const applyFilters = (orders: Order[]) => {
+    return orders.filter((order) => {
+      // Funcție helper pentru a verifica statusul comenzii
+      const isOrderStatus = (order: Order, statuses: string[]) => {
+        const normalizedOrderStatus = order.orderStatus
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        return statuses.some(
+          (status) =>
+            status
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "") === normalizedOrderStatus
+        );
+      };
+
+      // Aplicăm filtrele în funcție de selecție
+      const matchesOrderFilter = (() => {
+        switch (orderFilter) {
+          case "nefinalizate":
+            return (
+              order.orderStatus !== "Comanda finalizata!" &&
+              order.orderStatus !== "Comanda anulata" &&
+              order.orderStatus !== "Comandă anulată" &&
+              order.orderStatus !== "Comanda rambursata" &&
+              order.orderStatus !== "Comandă rambursată"
+            );
+          case "card":
+            return order.paymentType === "card";
+          case "ramburs":
+            return order.paymentType === "ramburs";
+          case "completate":
+            return isOrderStatus(order, [
+              "Comanda finalizata!",
+              "Comanda finalizată!",
+            ]);
+          case "anulate":
+            return isOrderStatus(order, ["Comanda anulata", "Comandă anulată"]);
+          case "rambursate":
+            return isOrderStatus(order, [
+              "Comanda rambursata",
+              "Comandă rambursată",
+            ]);
+          case "toate":
+            return true;
+          default:
+            return true;
+        }
+      })();
+
+      // Funcție helper pentru a verifica luna comenzii
+      const matchesMonthFilter = (() => {
+        if (monthFilter === "toate") return true;
+
+        const orderDate = new Date(order.createdAt);
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth();
+
+        switch (monthFilter) {
+          case "luna_curenta":
+            return (
+              orderDate.getFullYear() === currentYear &&
+              orderDate.getMonth() === currentMonth
+            );
+          case "luna_trecuta":
+            const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+            const lastMonthYear =
+              currentMonth === 0 ? currentYear - 1 : currentYear;
+            return (
+              orderDate.getFullYear() === lastMonthYear &&
+              orderDate.getMonth() === lastMonth
+            );
+          case "ultimele_3_luni":
+            const threeMonthsAgo = new Date(currentDate);
+            threeMonthsAgo.setMonth(currentMonth - 3);
+            return orderDate >= threeMonthsAgo;
+          case "ultimele_6_luni":
+            const sixMonthsAgo = new Date(currentDate);
+            sixMonthsAgo.setMonth(currentMonth - 6);
+            return orderDate >= sixMonthsAgo;
+          case "anul_curent":
+            return orderDate.getFullYear() === currentYear;
+          case "anul_trecut":
+            return orderDate.getFullYear() === currentYear - 1;
+          default:
+            return true;
+        }
+      })();
+
+      return (
+        matchesOrderFilter && (!useYearMonthFilter ? matchesMonthFilter : true)
+      );
+    });
+  };
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      setFilteredOrders(applyFilters(orders));
+    }
+  }, [orders, orderFilter, monthFilter]);
+
+  const toggleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(filteredOrders.map((order) => order.id));
+    }
+  };
+
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrders((prev) =>
+      prev.includes(orderId)
+        ? prev.filter((id) => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <Input
-            placeholder="Caută după ID, nume, email sau telefon..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
-        </div>
-        <div className="w-full md:w-48">
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="useYearMonthFilter"
+                checked={useYearMonthFilter}
+                onCheckedChange={(checked) => {
+                  setUseYearMonthFilter(checked as boolean);
+                  if (checked) {
+                    setMonthFilter("toate");
+                    if (!selectedYear) setSelectedYear(years[0].toString());
+                    if (!selectedMonth)
+                      setSelectedMonth(new Date().getMonth() + 1 + "");
+                  }
+                }}
+              />
+              <Label htmlFor="useYearMonthFilter">
+                Filtrare după an și lună
+              </Label>
+            </div>
+
+            {useYearMonthFilter ? (
+              <div className="flex gap-2">
+                <Select
+                  value={selectedYear}
+                  onValueChange={setSelectedYear}
+                  disabled={!useYearMonthFilter}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Selectează anul" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={selectedMonth}
+                  onValueChange={setSelectedMonth}
+                  disabled={!useYearMonthFilter || !selectedYear}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Selectează luna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <Select
+                value={monthFilter}
+                onValueChange={setMonthFilter}
+                disabled={useYearMonthFilter}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrează după perioadă" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="toate">Toate perioadele</SelectItem>
+                  <SelectItem value="luna_curenta">Luna curentă</SelectItem>
+                  <SelectItem value="luna_trecuta">Luna trecută</SelectItem>
+                  <SelectItem value="ultimele_3_luni">
+                    Ultimele 3 luni
+                  </SelectItem>
+                  <SelectItem value="ultimele_6_luni">
+                    Ultimele 6 luni
+                  </SelectItem>
+                  <SelectItem value="anul_curent">Anul curent</SelectItem>
+                  <SelectItem value="anul_trecut">Anul trecut</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
           <Select value={orderFilter} onValueChange={setOrderFilter}>
-            <SelectTrigger>
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrează comenzile" />
             </SelectTrigger>
             <SelectContent>
@@ -956,96 +948,30 @@ export default function AdminOrderList() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-full md:w-48">
-          <Select value={monthFilter} onValueChange={setMonthFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filtrează după perioadă" />
+
+        <div className="flex gap-2">
+          <Select
+            value={bulkAction || ""}
+            onValueChange={handleBulkActionChange}
+            disabled={selectedOrders.length === 0}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Acțiune în bulk" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="toate">Toate perioadele</SelectItem>
-              <SelectItem value="luna_curenta">Luna curentă</SelectItem>
-              <SelectItem value="luna_trecuta">Luna trecută</SelectItem>
-              <SelectItem value="ultimele_3_luni">Ultimele 3 luni</SelectItem>
-              <SelectItem value="ultimele_6_luni">Ultimele 6 luni</SelectItem>
-              <SelectItem value="anul_curent">Anul curent</SelectItem>
-              <SelectItem value="anul_trecut">Anul trecut</SelectItem>
+              <SelectItem value="fulfill">Finalizează</SelectItem>
+              <SelectItem value="cancel">Anulează</SelectItem>
+              <SelectItem value="refund">Rambursare</SelectItem>
+              <SelectItem value="delete">Șterge</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            onClick={executeBulkAction}
+            disabled={!bulkAction || selectedOrders.length === 0}
+          >
+            Aplică
+          </Button>
         </div>
-      </div>
-
-      {/* Statistici */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              {getStatsTitle()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.totalOrders === 1 ? "comandă" : "comenzi"}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Venit Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.totalRevenue.toLocaleString("ro-RO", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}{" "}
-              RON
-            </div>
-            <p className="text-xs text-muted-foreground">
-              din {stats.totalProducts} produse
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Valoare Medie Comandă
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.averageOrderValue.toLocaleString("ro-RO", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}{" "}
-              RON
-            </div>
-            <p className="text-xs text-muted-foreground">per comandă</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Produse per Comandă
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.totalOrders > 0
-                ? (stats.totalProducts / stats.totalOrders).toLocaleString(
-                    "ro-RO",
-                    {
-                      minimumFractionDigits: 1,
-                      maximumFractionDigits: 1,
-                    }
-                  )
-                : "0"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              media produse/comandă
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Bara de acțiuni pentru comenzile selectate */}
@@ -1065,43 +991,79 @@ export default function AdminOrderList() {
               : `${selectedOrders.length} comenzi selectate`}
           </Label>
         </div>
-        {selectedOrders.length > 0 && (
-          <Select
-            value=""
-            onValueChange={(value) => {
-              setBulkAction(value as any);
-              setShowBulkActionDialog(true);
-            }}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Acțiuni în bulk" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="fulfill">Finalizează Comenzile</SelectItem>
-              <SelectItem value="cancel">Anulează Comenzile</SelectItem>
-              <SelectItem value="refund">Rambursează Comenzile</SelectItem>
-              <SelectItem value="delete">Șterge Comenzile</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-          <p className="mt-2 text-gray-600">Se încarcă comenzile...</p>
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-600">Nu există comenzi</p>
-        </div>
-      ) : filteredOrders.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-600">
-            Nu s-au găsit comenzi care să corespundă criteriilor
-          </p>
-        </div>
-      ) : (
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Total Comenzi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{filteredOrders.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Venit Total</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat("ro-RO", {
+                style: "currency",
+                currency: "RON",
+              }).format(
+                filteredOrders.reduce((sum, order) => sum + order.total, 0)
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Total Produse</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {filteredOrders.reduce(
+                (sum, order) =>
+                  sum +
+                  order.items.reduce(
+                    (itemSum, item) => itemSum + item.quantity,
+                    0
+                  ),
+                0
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">
+              Valoare Medie Comandă
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat("ro-RO", {
+                style: "currency",
+                currency: "RON",
+              }).format(
+                filteredOrders.length > 0
+                  ? filteredOrders.reduce(
+                      (sum, order) => sum + order.total,
+                      0
+                    ) / filteredOrders.length
+                  : 0
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Orders List */}
+      {isLoading ? (
+        <div className="text-center py-8">Se încarcă comenzile...</div>
+      ) : filteredOrders.length > 0 ? (
         <div className="space-y-4">
           {filteredOrders.map((order) => (
             <div key={order.id} className="flex items-start gap-4">
@@ -1125,9 +1087,12 @@ export default function AdminOrderList() {
             </div>
           ))}
         </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          Nu s-au găsit comenzi pentru perioada selectată
+        </div>
       )}
 
-      {/* Dialog de confirmare pentru acțiuni în bulk */}
       <AlertDialog
         open={showBulkActionDialog}
         onOpenChange={setShowBulkActionDialog}
